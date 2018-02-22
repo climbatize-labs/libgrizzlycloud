@@ -190,6 +190,7 @@ static void gc_force_stop()
 static void sigh_terminate(int __attribute__ ((unused)) signo)
 {
     hm_log(LOG_TRACE, gc->log, "Received SIGTERM");
+    gc_config_free(&gc->config);
     gc_force_stop();
     tunnel_force_stop_all();
     endpoints_force_stop_all();
@@ -220,4 +221,24 @@ void gc_signals(struct gc_s *gc)
         hm_log(LOG_CRIT, gc->log, "Unable to register SIGTERM signal handler: %s", strerror(errno));
         exit(1);
     }
+}
+
+int gc_config_init(struct gc_config_s *cfg, const char *filename)
+{
+    int ret;
+    ret = gc_config_parse(cfg, filename);
+    if(ret != GC_OK) {
+        printf("parsing config failed %d\n", ret);
+        return GC_ERROR;
+    }
+
+    gc_config_dump(cfg);
+
+    return GC_OK;
+}
+
+void gc_config_free(struct gc_config_s *cfg)
+{
+    json_object_put(cfg->jobj);
+    free(cfg->content);
 }
