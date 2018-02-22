@@ -1,4 +1,4 @@
-LIBS    := -lgrizzlycloud -lssl -lcrypto -lev -lm
+LIBS    := -lgrizzlycloud -lssl -lcrypto -lev -lm -ljson-c
 INCS    := -I../../src/include
 LIBDIR  := -L../../
 BIN     := grizzlycloud

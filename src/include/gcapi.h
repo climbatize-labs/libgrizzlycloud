@@ -7,6 +7,32 @@ enum gc_state_e {
     GC_DISCONNECTED
 };
 
+struct config_tunnel_s {
+    sn cloud;
+    sn device;
+    int port;
+    int port_local;
+};
+
+#define MAX_TUNNELS     32
+#define MAX_ALLOW_PORTS 32
+
+struct gc_config_s {
+    sn username;
+    sn password;
+    sn device;
+
+    int ntunnels;
+    struct config_tunnel_s tunnels[MAX_TUNNELS];
+
+    int nallowed;
+    int allowed[MAX_ALLOW_PORTS];
+
+    struct hm_log_s *log;
+    struct json_object *jobj;
+    char *content;
+};
+
 struct gc_device_pair_s {
     sn cloud;
     sn pid;
@@ -40,6 +66,8 @@ struct gc_s {
 
     struct client_ssl_s client;
 
+    struct gc_config_s config;
+
     struct {
         sn buf;
     } net;
@@ -60,5 +88,8 @@ extern struct hm_pool_s pool;
 extern struct gc_s *gc;
 
 void gc_signals(struct gc_s *gc);
+
+int gc_config_init(struct gc_config_s *cfg, const char *filename);
+void gc_config_free(struct gc_config_s *cfg);
 
 #endif

@@ -88,12 +88,24 @@ static void upstream_state_changed(struct gc_s *gc, enum gc_state_e state)
     }
 }
 
-int main()
+int main(int argc, char **argv)
 {
     struct gc_s gc;
 
-    loop = ev_default_loop(0);
     hm_log_open(&gclog, NULL, LOG_TRACE);
+
+    if(argc != 2) {
+        hm_log(LOG_CRIT, &gclog, "Please specify config file");
+        exit(1);
+    }
+
+    gc.config.log = &gclog;
+    if(gc_config_init(&gc.config, argv[1]) != GC_OK) {
+        hm_log(LOG_CRIT, &gclog, "Config file couldn't be initialized");
+        exit(1);
+    }
+
+    loop = ev_default_loop(0);
 
     memset(&gc, 0, sizeof(gc));
 
@@ -114,13 +126,11 @@ int main()
     gc.password = "hi1";
     gc.device   = "Dev";
 
-    //init_signals();
     gc_init(loop, &gc);
 
     ev_run(loop, 0);
 
     gc_deinit(&gc);
-
 
     return 0;
 }

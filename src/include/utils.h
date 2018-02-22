@@ -178,27 +178,18 @@ struct pair_s {
     sn port_remote;
 };
 
-struct config_s {
-    const char *hostname;
-    int port;
-    const char *username;
-    const char *password;
-    const char *device;
-    struct json_object *jobj;
-    char *content;
-};
-
 struct gc_s;
 struct proto_s;
+struct gc_config_s;
 
+void gc_config_dump(struct gc_config_s *cfg);
+int gc_config_parse(struct gc_config_s *cfg, const char *path);
 int packet_send(struct gc_s *gc, struct proto_s *pr);
 int parse_header(sn input, char ***argv, int *argc);
-int config_parse(struct config_s *cfg, const char *path);
-void config_clean(struct config_s *cfg);
 void swap_memory(char *dst, int ndst);
 
 //void memory_append(struct mem_s *dst, const char *src, const int nsrc);
-//int gc_fread(char **dst, const char *fname);
+int gc_fread(char **dst, const char *fname);
 
 inline static void timestring(char *b, const int nb)
 {

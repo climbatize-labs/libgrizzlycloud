@@ -103,24 +103,24 @@ int parse_header(sn input, char ***argv, int *argc)
     return GC_OK;
 }
 
-/*
-
-int config_parse(struct config_s *cfg, const char *path)
+int gc_config_parse(struct gc_config_s *cfg, const char *path)
 {
     char *content;
     int n;
 
     n = gc_fread(&content, path);
     if(n <= 1) {
-        return -1;
+        return GC_ERROR;
     }
+
+    cfg->ntunnels = cfg->nallowed = 0;
 
     struct json_tokener *tok = json_tokener_new();
     struct json_object *jobj = json_tokener_parse_ex(tok, content, n);
     json_tokener_free(tok);
 
     if(jobj == NULL) {
-        return -1;
+        return GC_ERROR;
     }
 
 #define PRS(m_v, m_type)\
@@ -129,31 +129,87 @@ int config_parse(struct config_s *cfg, const char *path)
     enum json_type type##m_v;\
     type##m_v = json_object_get_type(m_v);\
     if(type##m_v != m_type) {\
-        return -1;\
+        return GC_ERROR;\
     }
 
-    PRS(hostname, json_type_string);
-    cfg->hostname = json_object_get_string(hostname);
+#define VAL_STR(m_dst, m_src)\
+    PRS(m_src, json_type_string);\
+    sn_setr(m_dst,\
+            (char *)json_object_get_string(m_src),\
+            json_object_get_string_len(m_src));
 
-    PRS(port, json_type_int);
-    cfg->port = json_object_get_int(port);
+    VAL_STR(cfg->username, user)
+    VAL_STR(cfg->password, password)
+    VAL_STR(cfg->device,   device)
 
-    PRS(username, json_type_string);
-    cfg->username = json_object_get_string(username);
+    PRS(allow, json_type_array);
+    array_list *allow_array = json_object_get_array(allow);
 
-    PRS(password, json_type_string);
-    cfg->password = json_object_get_string(password);
+    int i;
+    for(i = 0; i < array_list_length(allow_array); i++) {
+        struct json_object *port = array_list_get_idx(allow_array, i);
+        cfg->allowed[i] = json_object_get_int(port);
+        cfg->nallowed++;
+    }
 
-    PRS(device, json_type_string);
-    cfg->device = json_object_get_string(device);
+    PRS(tunnels, json_type_array);
+    array_list *tunnels_array = json_object_get_array(tunnels);
+
+    for(i = 0; i < array_list_length(tunnels_array); i++) {
+        struct json_object *tunnel = array_list_get_idx(tunnels_array, i);
+        struct json_object *t_cloud, *t_device, *t_port, *t_port_local;
+
+#define TUN(m_dst, m_name, m_src)\
+        json_object_object_get_ex(tunnel, m_name, &m_src);\
+        sn_setr(m_dst,\
+                (char *)json_object_get_string(m_src),\
+                json_object_get_string_len(m_src));
+
+#define TUN_INT(m_dst, m_name, m_src)\
+        json_object_object_get_ex(tunnel, m_name, &m_src);\
+        m_dst = json_object_get_int(m_src);
+
+        TUN(cfg->tunnels[i].cloud,      "cloud",     t_cloud)
+        TUN(cfg->tunnels[i].device,     "device",    t_device)
+
+        TUN_INT(cfg->tunnels[i].port,       "port",      t_port)
+        TUN_INT(cfg->tunnels[i].port_local, "portLocal", t_port_local)
+
+        cfg->ntunnels++;
+    }
 
     cfg->jobj = jobj;
     cfg->content = content;
 
-    return 0;
+    return GC_OK;
 }
 
-void config_clean(struct config_s *cfg)
+void gc_config_dump(struct gc_config_s *cfg)
+{
+    printf("Username: [%.*s]\n", sn_p(cfg->username));
+    printf("Password: [%.*s]\n", sn_p(cfg->password));
+    printf("Device: [%.*s]\n", sn_p(cfg->device));
+
+    printf("Allowed ports total: [%d]\n", cfg->nallowed);
+
+    int i;
+    for(i = 0; i < cfg->nallowed; i++) {
+        printf("\tPort: %d\n", cfg->allowed[i]);
+    }
+
+    printf("Allowed tunnels total: [%d]\n", cfg->ntunnels);
+
+    for(i = 0; i < cfg->ntunnels; i++) {
+        printf("\tCloud: [%.*s]\n", sn_p(cfg->tunnels[i].cloud));
+        printf("\tDevice: [%.*s]\n", sn_p(cfg->tunnels[i].device));
+        printf("\tPort: [%d]\n", cfg->tunnels[i].port);
+        printf("\tLocal port: [%d]\n", cfg->tunnels[i].port_local);
+        printf("\t---------\n");
+    }
+
+}
+
+void config_clean(struct gc_config_s *cfg)
 {
     free(cfg->content);
     json_object_put(cfg->jobj);
@@ -161,42 +217,40 @@ void config_clean(struct config_s *cfg)
 
 int gc_fread(char **dst, const char *fname)
 {
-    FILE *pFile;
-    int lSize;
+    FILE *pfile;
+    int lsize;
     char *buffer;
     int result;
 
-    pFile = fopen(fname, "rb");
-    if(pFile == NULL) {
+    pfile = fopen(fname, "rb");
+    if(pfile == NULL) {
         return -1;
     }
 
-    fseek(pFile , 0 , SEEK_END);
-    lSize = ftell(pFile);
-    rewind(pFile);
+    fseek(pfile , 0 , SEEK_END);
+    lsize = ftell(pfile);
+    rewind(pfile);
 
-    if(lSize > MAX_FILE_SIZE) {
-        fclose(pFile);
+    if(lsize > MAX_FILE_SIZE) {
+        fclose(pfile);
         return -1;
     }
 
-    buffer = malloc(sizeof(char) * lSize);
+    buffer = malloc(sizeof(char) * lsize);
     if(buffer == NULL) {
-        fclose(pFile);
+        fclose(pfile);
         return -1;
     }
 
-    result = fread(buffer, sizeof(char), lSize, pFile);
-    if(result != lSize) {
-        fclose(pFile);
+    result = fread(buffer, sizeof(char), lsize, pfile);
+    if(result != lsize) {
+        fclose(pfile);
         free(buffer);
         return -1;
     }
 
     *dst = buffer;
 
-    fclose (pFile);
+    fclose(pfile);
     return result;
 }
-
-*/
