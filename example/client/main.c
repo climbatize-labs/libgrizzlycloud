@@ -1,9 +1,5 @@
 #include <gc.h>
 
-struct ev_loop *loop;
-struct hm_log_s gclog;
-struct hm_pool_s pool;
-
 static void callback_pair(struct gc_s *gc, struct gc_device_pair_s *pair)
 {
     printf(">%.*s\n", pair->type.n, pair->type.s);
@@ -92,26 +88,22 @@ int main(int argc, char **argv)
 {
     struct gc_s gc;
 
-    hm_log_open(&gclog, NULL, LOG_TRACE);
-
-    if(argc != 2) {
-        hm_log(LOG_CRIT, &gclog, "Please specify config file");
-        exit(1);
-    }
-
-    gc.config.log = &gclog;
-    if(gc_config_init(&gc.config, argv[1]) != GC_OK) {
-        hm_log(LOG_CRIT, &gclog, "Config file couldn't be initialized");
-        exit(1);
-    }
-
-    loop = ev_default_loop(0);
-
     memset(&gc, 0, sizeof(gc));
 
-    gc.loop = loop;
-    gc.log  = &gclog;
-    gc.pool = &pool;
+    hm_log_open(&gc.log, NULL, LOG_TRACE);
+
+    if(argc != 2) {
+        hm_log(LOG_CRIT, &gc.log, "Please specify config file");
+        exit(1);
+    }
+
+    gc.config.log = &gc.log;
+    assert(gc.config.log);
+    if(gc_config_init(&gc.config, argv[1]) != GC_OK) {
+        exit(1);
+    }
+
+    gc.loop = ev_default_loop(0);
 
     gc_signals(&gc);
 
@@ -126,9 +118,9 @@ int main(int argc, char **argv)
     gc.password = "hi1";
     gc.device   = "Dev";
 
-    gc_init(loop, &gc);
+    gc_init(gc.loop, &gc);
 
-    ev_run(loop, 0);
+    ev_run(gc.loop, 0);
 
     gc_deinit(&gc);
 

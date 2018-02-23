@@ -28,6 +28,8 @@ struct gc_config_s {
     int nallowed;
     int allowed[MAX_ALLOW_PORTS];
 
+    char file[64];
+
     struct hm_log_s *log;
     struct json_object *jobj;
     char *content;
@@ -45,7 +47,7 @@ struct gc_device_pair_s {
 struct gc_s {
     struct ev_loop   *loop;
     struct hm_pool_s *pool;
-    struct hm_log_s  *log;
+    struct hm_log_s  log;
 
     //void (*message_to_set_reply)(struct gc_s *gc, struct proto_s *p);
     void (*message_from)(struct gc_s *gc, char *device, int ndevice, char *msg, int nmsg, char *type, int ntype);

@@ -38,7 +38,7 @@ int gc_message_from(struct gc_s *gc, struct proto_s *p)
 
 static void gc_cloud_offline(struct gc_s *gc, struct proto_s *p)
 {
-    endpoint_stop(gc->log,
+    endpoint_stop(&gc->log,
                   p->u.offline_set.address,
                   p->u.offline_set.cloud,
                   p->u.offline_set.device);
@@ -50,7 +50,7 @@ static void release(struct client_ssl_s *c, enum gcerr_e error)
 {
     async_client_ssl_shutdown(c);
     connect_timer.data = NULL;
-    ev_timer_again(loop, &connect_timer);
+    ev_timer_again(gc->loop, &connect_timer);
     (void)error;
 }
 
@@ -59,12 +59,12 @@ static void receive(struct gc_s *gc, const void *buffer, const int nbuffer)
     struct proto_s p;
     sn src = { .s = (char *)buffer + 4, .n = nbuffer - 4 };
     if(deserialize(&p, &src) != 0) {
-        hm_log(LOG_ERR, gc->log, "Parsing failed");
+        hm_log(LOG_ERR, &gc->log, "Parsing failed");
         return;
     }
 
-    hm_log(LOG_TRACE, gc->log, "Received packet from upstream type: %d size: %d",
-                               p.type, nbuffer);
+    hm_log(LOG_TRACE, &gc->log, "Received packet from upstream type: %d size: %d",
+                                p.type, nbuffer);
 
     switch(p.type) {
         case ACCOUNT_LOGIN_REPLY:
@@ -111,7 +111,7 @@ static void receive(struct gc_s *gc, const void *buffer, const int nbuffer)
             }
         break;
         default:
-            hm_log(LOG_TRACE, gc->log, "Not handling packet type: %d size: %d", p.type, nbuffer);
+            hm_log(LOG_TRACE, &gc->log, "Not handling packet type: %d size: %d", p.type, nbuffer);
         break;
     }
 }
@@ -123,7 +123,7 @@ static void try_connect(struct ev_loop *loop, struct ev_timer *timer, int revent
     memset(&gc->client, 0, sizeof(gc->client));
 
     gc->client.base.loop = loop;
-    gc->client.base.log  = gc->log;
+    gc->client.base.log  = &gc->log;
 
     sn_initz(hostname, (char *)gc->hostname);
     gc->client.base.net.port = gc->port;
@@ -155,12 +155,10 @@ int gc_deinit(struct gc_s *gc)
     return 0;
 }
 
-int gc_init(struct ev_loop *l, struct gc_s *callbacks)
+int gc_init(struct ev_loop *loop, struct gc_s *callbacks)
 {
-    loop = l;
-
     if(SSL_library_init() < 0) {
-        hm_log(LOG_CRIT, gc->log, "Could not initialize OpenSSL library");
+        hm_log(LOG_CRIT, &gc->log, "Could not initialize OpenSSL library");
         return GC_ERROR;
     }
 
@@ -180,7 +178,7 @@ int gc_init(struct ev_loop *l, struct gc_s *callbacks)
     return GC_OK;
 }
 
-static void gc_force_stop()
+static void gc_force_stop(struct ev_loop *loop)
 {
     ev_timer_stop(loop, &connect_timer);
 
@@ -189,9 +187,9 @@ static void gc_force_stop()
 
 static void sigh_terminate(int __attribute__ ((unused)) signo)
 {
-    hm_log(LOG_TRACE, gc->log, "Received SIGTERM");
+    hm_log(LOG_TRACE, &gc->log, "Received SIGTERM");
     gc_config_free(&gc->config);
-    gc_force_stop();
+    gc_force_stop(gc->loop);
     tunnel_force_stop_all();
     endpoints_force_stop_all();
 }
@@ -205,7 +203,7 @@ void gc_signals(struct gc_s *gc)
     act.sa_handler = SIG_IGN;
 
     if(sigaction(SIGPIPE, &act, NULL) < 0) {
-        hm_log(LOG_CRIT, gc->log, "Sigaction cannot be examined");
+        hm_log(LOG_CRIT, &gc->log, "Sigaction cannot be examined");
     }
 
     act.sa_flags = SA_NOCLDSTOP;
@@ -213,12 +211,12 @@ void gc_signals(struct gc_s *gc)
     act.sa_flags = 0;
     act.sa_handler = sigh_terminate;
     if(sigaction(SIGINT, &act, NULL) < 0) {
-        hm_log(LOG_CRIT, gc->log, "Unable to register SIGINT signal handler: %s", strerror(errno));
+        hm_log(LOG_CRIT, &gc->log, "Unable to register SIGINT signal handler: %s", strerror(errno));
         exit(1);
     }
 
     if(sigaction(SIGTERM, &act, NULL) < 0) {
-        hm_log(LOG_CRIT, gc->log, "Unable to register SIGTERM signal handler: %s", strerror(errno));
+        hm_log(LOG_CRIT, &gc->log, "Unable to register SIGTERM signal handler: %s", strerror(errno));
         exit(1);
     }
 }
@@ -226,12 +224,14 @@ void gc_signals(struct gc_s *gc)
 int gc_config_init(struct gc_config_s *cfg, const char *filename)
 {
     int ret;
+
     ret = gc_config_parse(cfg, filename);
     if(ret != GC_OK) {
-        printf("parsing config failed %d\n", ret);
+        hm_log(LOG_CRIT, cfg->log, "Parsing config file [%s] failed", filename);
         return GC_ERROR;
     }
 
+    assert(cfg->log);
     gc_config_dump(cfg);
 
     return GC_OK;
