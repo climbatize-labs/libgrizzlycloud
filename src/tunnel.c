@@ -109,15 +109,15 @@ static void client_data(struct conn_client_s *client, char *buf, const int len)
     packet_send(gc, &m);
 }
 
-static int alloc_server(struct conn_server_s **c, sn port_local)
+static int alloc_server(struct gc_s *gc, struct conn_server_s **c, sn port_local)
 {
     *c = malloc(sizeof(**c));
     if(!*c) return GC_ERROR;
 
     memset(c, 0, sizeof(**c));
 
-    (*c)->loop = loop;
-    (*c)->log  = &gclog;
+    (*c)->loop = gc->loop;
+    (*c)->log  = &gc->log;
     (*c)->pool = NULL;
     (*c)->recv = client_data;
     (*c)->host = "0.0.0.0";
@@ -139,7 +139,7 @@ int tunnel_add(struct gc_s *gc, struct gc_device_pair_s *pair, sn type)
     sn_initz(forced, "forced");
     if(!sn_cmps(type, forced)) {
         int ret;
-        ret = alloc_server(&c, pair->port_local);
+        ret = alloc_server(gc, &c, pair->port_local);
         if(ret != GC_OK) return ret;
     }
 

@@ -97,7 +97,7 @@ static int endpoint_add(sn key, sn remote_fd, sn backend_port,
     sn_atoi(bp, backend_port, 32);
 
     client->base.loop = gc->loop;
-    client->base.log  = gc->log;
+    client->base.log  = &gc->log;
     client->base.pool = gc->pool;
 
     sn_initz(ip, "0.0.0.0");
@@ -168,13 +168,13 @@ int endpoint_request(struct gc_s *gc, struct proto_s *p, char **argv, int argc)
                            pid, &ep);
         if(ret != GC_OK) return ret;
 
-        hm_log(LOG_TRACE, gc->log, "Adding endpoint");
+        hm_log(LOG_TRACE, &gc->log, "Adding endpoint");
     } else {
-        hm_log(LOG_TRACE, gc->log, "Reusing endpoint");
+        hm_log(LOG_TRACE, &gc->log, "Reusing endpoint");
     }
 
-    hm_log(LOG_TRACE, gc->log, "Receiving header [%s/%s/%s/%s] and payload of %d bytes",
-                               argv[0], argv[1], argv[2], argv[3], p->u.message_from.body.n);
+    hm_log(LOG_TRACE, &gc->log, "Receiving header [%s/%s/%s/%s] and payload of %d bytes",
+                                argv[0], argv[1], argv[2], argv[3], p->u.message_from.body.n);
 
     gen_ev_send(ep->client,
             p->u.message_from.body.s,

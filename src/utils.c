@@ -65,12 +65,12 @@ int packet_send(struct gc_s *gc, struct proto_s *pr)
 {
     sn dst;
     if(serialize(&dst, pr) != GC_OK) {
-        hm_log(LOG_DEBUG, gc->log, "Parsing failed");
+        hm_log(LOG_DEBUG, &gc->log, "Packet serialization failed");
         return GC_ERROR;
     }
 
     if(net_send(gc, dst.s, dst.n) != GC_OK) {
-        hm_log(LOG_DEBUG, gc->log, "Packet of size %d couldn't be sent", dst.n);
+        hm_log(LOG_DEBUG, &gc->log, "Packet of size %d couldn't be sent", dst.n);
         return GC_ERROR;
     }
 
@@ -108,12 +108,15 @@ int gc_config_parse(struct gc_config_s *cfg, const char *path)
     char *content;
     int n;
 
+    assert(cfg);
+
     n = gc_fread(&content, path);
     if(n <= 1) {
         return GC_ERROR;
     }
 
-    cfg->ntunnels = cfg->nallowed = 0;
+    // Trim long paths up to sizeof(cfg->file) bytes
+    snprintf(cfg->file, sizeof(cfg->file), "%s", path);
 
     struct json_tokener *tok = json_tokener_new();
     struct json_object *jobj = json_tokener_parse_ex(tok, content, n);
@@ -140,24 +143,36 @@ int gc_config_parse(struct gc_config_s *cfg, const char *path)
 
     VAL_STR(cfg->username, user)
     VAL_STR(cfg->password, password)
-    VAL_STR(cfg->device,   device)
 
-    PRS(allow, json_type_array);
-    array_list *allow_array = json_object_get_array(allow);
-
-    int i;
-    for(i = 0; i < array_list_length(allow_array); i++) {
-        struct json_object *port = array_list_get_idx(allow_array, i);
-        cfg->allowed[i] = json_object_get_int(port);
-        cfg->nallowed++;
+    struct json_object *device;
+    json_object_object_get_ex(jobj, "device", &device);
+    if(json_object_get_type(device) == json_type_string) {
+        sn_setr(cfg->device,
+            (char *)json_object_get_string(device),
+            json_object_get_string_len(device));
     }
 
-    PRS(tunnels, json_type_array);
-    array_list *tunnels_array = json_object_get_array(tunnels);
+    struct json_object *allow;
+    json_object_object_get_ex(jobj, "allow", &allow);
+    if(json_object_get_type(allow) == json_type_array) {
+        array_list *allow_array = json_object_get_array(allow);
+        int i;
+        for(i = 0; i < array_list_length(allow_array); i++) {
+            struct json_object *port = array_list_get_idx(allow_array, i);
+            cfg->allowed[i] = json_object_get_int(port);
+            cfg->nallowed++;
+        }
+    }
 
-    for(i = 0; i < array_list_length(tunnels_array); i++) {
-        struct json_object *tunnel = array_list_get_idx(tunnels_array, i);
-        struct json_object *t_cloud, *t_device, *t_port, *t_port_local;
+    struct json_object *tunnels;
+    json_object_object_get_ex(jobj, "tunnels", &tunnels);
+    if(json_object_get_type(tunnels) == json_type_array) {
+        array_list *tunnels_array = json_object_get_array(tunnels);
+
+        int i;
+        for(i = 0; i < array_list_length(tunnels_array); i++) {
+            struct json_object *tunnel = array_list_get_idx(tunnels_array, i);
+            struct json_object *t_cloud, *t_device, *t_port, *t_port_local;
 
 #define TUN(m_dst, m_name, m_src)\
         json_object_object_get_ex(tunnel, m_name, &m_src);\
@@ -169,13 +184,14 @@ int gc_config_parse(struct gc_config_s *cfg, const char *path)
         json_object_object_get_ex(tunnel, m_name, &m_src);\
         m_dst = json_object_get_int(m_src);
 
-        TUN(cfg->tunnels[i].cloud,      "cloud",     t_cloud)
-        TUN(cfg->tunnels[i].device,     "device",    t_device)
+            TUN(cfg->tunnels[i].cloud,      "cloud",     t_cloud)
+            TUN(cfg->tunnels[i].device,     "device",    t_device)
 
-        TUN_INT(cfg->tunnels[i].port,       "port",      t_port)
-        TUN_INT(cfg->tunnels[i].port_local, "portLocal", t_port_local)
+            TUN_INT(cfg->tunnels[i].port,       "port",      t_port)
+            TUN_INT(cfg->tunnels[i].port_local, "portLocal", t_port_local)
 
-        cfg->ntunnels++;
+            cfg->ntunnels++;
+        }
     }
 
     cfg->jobj = jobj;
@@ -186,25 +202,28 @@ int gc_config_parse(struct gc_config_s *cfg, const char *path)
 
 void gc_config_dump(struct gc_config_s *cfg)
 {
-    printf("Username: [%.*s]\n", sn_p(cfg->username));
-    printf("Password: [%.*s]\n", sn_p(cfg->password));
-    printf("Device: [%.*s]\n", sn_p(cfg->device));
-
-    printf("Allowed ports total: [%d]\n", cfg->nallowed);
-
     int i;
+
+    hm_log(LOG_DEBUG, cfg->log, "Using config: %s", cfg->file);
+    hm_log(LOG_DEBUG, cfg->log, "Username: [%.*s]", sn_p(cfg->username));
+    hm_log(LOG_DEBUG, cfg->log, "Password: [%s]", cfg->password.n > 0 ? "Set" : "Not Set");
+    hm_log(LOG_DEBUG, cfg->log, "Device: [%.*s]", sn_p(cfg->device));
+
+    hm_log(LOG_DEBUG, cfg->log, "Allowed ports total: [%d]", cfg->nallowed);
+
     for(i = 0; i < cfg->nallowed; i++) {
-        printf("\tPort: %d\n", cfg->allowed[i]);
+        hm_log(LOG_DEBUG, cfg->log, "Allowed port: [%d]", cfg->allowed[i]);
     }
 
-    printf("Allowed tunnels total: [%d]\n", cfg->ntunnels);
+    hm_log(LOG_DEBUG, cfg->log, "Allowed tunnels total: [%d]", cfg->ntunnels);
 
     for(i = 0; i < cfg->ntunnels; i++) {
-        printf("\tCloud: [%.*s]\n", sn_p(cfg->tunnels[i].cloud));
-        printf("\tDevice: [%.*s]\n", sn_p(cfg->tunnels[i].device));
-        printf("\tPort: [%d]\n", cfg->tunnels[i].port);
-        printf("\tLocal port: [%d]\n", cfg->tunnels[i].port_local);
-        printf("\t---------\n");
+        hm_log(LOG_DEBUG, cfg->log, "Tunnel %d: Cloud: [%.*s] Device: [%.*s] Port: [%d] Local port: [%d]",
+                                    i,
+                                    sn_p(cfg->tunnels[i].cloud),
+                                    sn_p(cfg->tunnels[i].device),
+                                    cfg->tunnels[i].port,
+                                    cfg->tunnels[i].port_local);
     }
 
 }
