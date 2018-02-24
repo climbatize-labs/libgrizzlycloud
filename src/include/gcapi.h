@@ -1,10 +1,20 @@
 #ifndef GCAPI_H_
 #define GCAPI_H_
 
+#define GC_DEFAULT_PORT    17040
+#define GC_MAX_TUNNELS     32
+#define GC_MAX_ALLOW_PORTS 32
+
 enum gc_state_e {
     GC_CONNECTED = 0,
     GC_HANDSHAKE_SUCCESS,
     GC_DISCONNECTED
+};
+
+enum gc_cfg_type_e {
+    GC_TYPE_HYBRID,
+    GC_TYPE_SERVER,
+    GC_TYPE_CLIENT
 };
 
 struct config_tunnel_s {
@@ -14,19 +24,18 @@ struct config_tunnel_s {
     int port_local;
 };
 
-#define MAX_TUNNELS     32
-#define MAX_ALLOW_PORTS 32
-
 struct gc_config_s {
     sn username;
     sn password;
     sn device;
 
     int ntunnels;
-    struct config_tunnel_s tunnels[MAX_TUNNELS];
+    struct config_tunnel_s tunnels[GC_MAX_TUNNELS];
 
     int nallowed;
-    int allowed[MAX_ALLOW_PORTS];
+    int allowed[GC_MAX_ALLOW_PORTS];
+
+    enum gc_cfg_type_e type;
 
     char file[64];
 
@@ -60,11 +69,8 @@ struct gc_s {
     void (*callback_login)(struct gc_s *gc, sn error);
     void (*callback_device_pair)(struct gc_s *gc, struct gc_device_pair_s *pair);
 
-    const char *hostname;
+    sn hostname;
     int port;
-    const char *username;
-    const char *password;
-    const char *device;
 
     struct client_ssl_s client;
 
@@ -81,7 +87,7 @@ int gc_init(struct ev_loop *loop, struct gc_s *gc);
 int gc_deinit(struct gc_s *gc);
 int gc_reinit_size(struct gc_s *gc, int size);
 
-void gc_sigh_terminate(int __attribute__ ((unused)) signo, ev_io *user_io);
+void gc_force_stop();
 
 extern struct ev_loop *loop;
 extern struct hm_log_s gclog;
@@ -93,5 +99,6 @@ void gc_signals(struct gc_s *gc);
 
 int gc_config_init(struct gc_config_s *cfg, const char *filename);
 void gc_config_free(struct gc_config_s *cfg);
+int gc_config_required(struct gc_config_s *cfg);
 
 #endif

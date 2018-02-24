@@ -3,6 +3,7 @@
 /*
  * Obtain pointer to data and its size
  *
+ * Warning: this is not aligned
  */
 char *ringbuffer_send_next(struct ringbuffer_s *rb, int *size)
 {
@@ -20,7 +21,7 @@ char *ringbuffer_send_next(struct ringbuffer_s *rb, int *size)
 
 /*
  * @static
- * Remote empty send buffer if it's already been sent
+ * Remove empty send buffer if it's already been sent
  *
  */
 static void ringbuffer_next(struct ringbuffer_s *rb)

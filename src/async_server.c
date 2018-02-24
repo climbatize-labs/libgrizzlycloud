@@ -191,8 +191,8 @@ static void *connector_addclient(struct conn_server_s *cs, struct conn_client_s 
 
     cc->holder = cch;
 
-    hm_log(LOG_NOTICE, cs->log, "{Connector}: adding client %.*s:%d, total: %d",
-                                sn_p(cc->base.net.ip), cc->base.net.port,
+    hm_log(LOG_NOTICE, cs->log, "{Connector}: adding client %.*s:%d:%d, total: %d",
+                                sn_p(cc->base.net.ip), cc->base.fd, cc->base.net.port,
                                 cs->clients);
 
     return cch;
@@ -352,8 +352,8 @@ int async_server(struct conn_server_s *cs)
     cs->listener.data = cs;
     ev_io_start(cs->loop, &cs->listener);
 
-    hm_log(LOG_TRACE, cs->log, "Opening async server on %s:%s fd: %d",
-                               cs->host, cs->port, cs->fd);
+    hm_log(LOG_TRACE, cs->log, "Opening async server on %s:%s fd: %d %p",
+                               cs->host, cs->port, cs->fd, cs);
 
     return GC_OK;
 }
