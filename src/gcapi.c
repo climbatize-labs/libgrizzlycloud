@@ -26,9 +26,15 @@ int gc_message_from(struct gc_s *gc, struct proto_s *p)
     sn_initz(request, "tunnel_request");
 
     if(sn_cmps(type, request)) {
-        endpoint_request(gc, p, argv, argc);
+        ret = endpoint_request(gc, p, argv, argc);
+        if(ret != GC_OK) {
+            hm_log(LOG_ERR, &gc->log, "Tunnel request failed");
+        }
     } else if(sn_cmps(type, response)) {
-        tunnel_response(gc, p, argv, argc);
+        ret = tunnel_response(gc, p, argv, argc);
+        if(ret != GC_OK) {
+            hm_log(LOG_ERR, &gc->log, "Tunnel reponse failed");
+        }
     }
 
     free(argv);
@@ -125,9 +131,8 @@ static void try_connect(struct ev_loop *loop, struct ev_timer *timer, int revent
     gc->client.base.loop = loop;
     gc->client.base.log  = &gc->log;
 
-    sn_initz(hostname, (char *)gc->hostname);
     gc->client.base.net.port = gc->port;
-    snb_cpy_ds(gc->client.base.net.ip, hostname);
+    snb_cpy_ds(gc->client.base.net.ip, gc->hostname);
 
     gc->client.recv = receive;
 
@@ -178,20 +183,25 @@ int gc_init(struct ev_loop *loop, struct gc_s *callbacks)
     return GC_OK;
 }
 
-static void gc_force_stop(struct ev_loop *loop)
+static void gc_upstream_force_stop(struct ev_loop *loop)
 {
     ev_timer_stop(loop, &connect_timer);
 
     async_client_ssl_shutdown(&gc->client);
 }
 
+void gc_force_stop()
+{
+    gc_config_free(&gc->config);
+    gc_upstream_force_stop(gc->loop);
+    tunnel_force_stop_all();
+    endpoints_force_stop_all();
+}
+
 static void sigh_terminate(int __attribute__ ((unused)) signo)
 {
     hm_log(LOG_TRACE, &gc->log, "Received SIGTERM");
-    gc_config_free(&gc->config);
-    gc_force_stop(gc->loop);
-    tunnel_force_stop_all();
-    endpoints_force_stop_all();
+    gc_force_stop();
 }
 
 void gc_signals(struct gc_s *gc)
@@ -219,6 +229,28 @@ void gc_signals(struct gc_s *gc)
         hm_log(LOG_CRIT, &gc->log, "Unable to register SIGTERM signal handler: %s", strerror(errno));
         exit(1);
     }
+}
+
+int gc_config_required(struct gc_config_s *cfg)
+{
+    assert(cfg);
+
+    if(cfg->username.n == 0 || cfg->password.n == 0 || cfg->device.n == 0) {
+        hm_log(LOG_CRIT, cfg->log, "Username, password nad device must be set");
+        return GC_ERROR;
+    }
+
+    if(cfg->ntunnels == 0 && cfg->nallowed == 0) {
+        hm_log(LOG_CRIT, cfg->log, "Neither tunnels nor allowed ports specified");
+        return GC_ERROR;
+    }
+
+    if(cfg->ntunnels > 0 && cfg->nallowed > 0) cfg->type = GC_TYPE_HYBRID;
+    else if(cfg->ntunnels > 0)                 cfg->type = GC_TYPE_CLIENT;
+    else if(cfg->nallowed > 0)                 cfg->type = GC_TYPE_SERVER;
+    else                                       return GC_ERROR;
+
+    return GC_OK;
 }
 
 int gc_config_init(struct gc_config_s *cfg, const char *filename)

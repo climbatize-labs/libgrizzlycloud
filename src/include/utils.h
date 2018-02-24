@@ -3,6 +3,9 @@
 
 #define MAX_FILE_SIZE   (1024 * 1024)
 
+#define CALLBACK_ERROR(m_log, m_msg)\
+    hm_log(LOG_EMERG, m_log, m_msg)
+
 /*
  * Custom string SN
  * N characters starting at pointer S
@@ -100,6 +103,15 @@
     int m_var = atoi(buf##m_var);
 
 /*
+ * Convert int m_src to string m_var
+ * while m_size is conversion buffer size
+ */
+#define sn_itoa(m_var, m_src, m_size)\
+    char buf##m_var[m_size];\
+    snprintf(buf##m_var, sizeof(buf##m_var), "%d", m_src);\
+    sn_initz(m_var, buf##m_var);
+
+/*
  * Copy m_src string to m_dst
  * Only if destination space is sufficient
  *
@@ -174,8 +186,8 @@ typedef struct snb_s {
 struct pair_s {
     sn cloud;
     sn device;
-    sn port_local;
-    sn port_remote;
+    int port_local;
+    int port_remote;
 };
 
 struct gc_s;

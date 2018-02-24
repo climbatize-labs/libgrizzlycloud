@@ -2,27 +2,19 @@
 
 static struct tunnel_s    *tunnels  = NULL;
 
-static struct tunnel_s *tunnel_client_find(sn port, sn fd)
+static struct conn_client_s *tunnel_client_find(sn port, sn fd)
 {
     struct tunnel_s *t;
-    for(t = tunnels; t != NULL; t = t->next) {
-        if(sn_cmps(t->port_remote, port)) {
-            return t;
-        }
-    }
-
-    return NULL;
-}
-
-static struct conn_client_s *client_find(struct conn_server_s *s, sn fd)
-{
     struct conn_client_holder_s *holder;
 
-    sn_atoi(cfd, fd, 32);
+    for(t = tunnels; t != NULL; t = t->next) {
+        for(holder = t->server->clients_head; holder != NULL; holder = holder->next) {
+            sn_itoa(client_fd, holder->client->base.fd, 8);
 
-    for(holder = s->clients_head; holder != NULL; holder = holder->next) {
-        if(holder->client->base.fd == cfd) {
-            return holder->client;
+            if(sn_cmps(t->port_remote, port) &&
+               sn_cmps(client_fd, fd)) {
+                return holder->client;
+            }
         }
     }
 
@@ -38,13 +30,13 @@ int tunnel_response(struct gc_s *gc, struct proto_s *p, char **argv, int argc)
     sn_initr(port, argv[1], strlen(argv[1]));
     sn_initr(fd,   argv[2], strlen(argv[2]));
 
-    struct tunnel_s *t = tunnel_client_find(port, fd);
-    if(!t) {
-        return GC_ERROR;
-    }
+    hm_log(LOG_TRACE, &gc->log, "Tunnel response [port:fd] [%.*s:%*s]",
+                                sn_p(port),
+                                sn_p(fd));
 
-    struct conn_client_s *client = client_find(t->server, fd);
+    struct conn_client_s *client = tunnel_client_find(port, fd);
     if(!client) {
+        hm_log(LOG_TRACE, &gc->log, "Tunnel client not found");
         return GC_ERROR;
     }
 
@@ -114,7 +106,7 @@ static int alloc_server(struct gc_s *gc, struct conn_server_s **c, sn port_local
     *c = malloc(sizeof(**c));
     if(!*c) return GC_ERROR;
 
-    memset(c, 0, sizeof(**c));
+    memset(*c, 0, sizeof(**c));
 
     (*c)->loop = gc->loop;
     (*c)->log  = &gc->log;
