@@ -24,6 +24,20 @@ static void endpoint_stop_client(struct conn_client_s *c)
     }
 }
 
+static int port_allowed(struct gc_s *gc, sn backend_port)
+{
+    int i;
+    sn_atoi(port, backend_port, 8);
+
+    for(i = 0; i < gc->config.nallowed; i++) {
+        if(gc->config.allowed[i] == port) {
+            return GC_OK;
+        }
+    }
+
+    return GC_ERROR;
+}
+
 static void endpoint_recv(struct conn_client_s *client, char *buf, int len)
 {
     struct endpoint_s *ent;
@@ -32,6 +46,8 @@ static void endpoint_recv(struct conn_client_s *client, char *buf, int len)
 
     for(ent = endpoints; ent != NULL; ent = ent->next) {
         if(ent->client == client) {
+
+
             // Message header
             char header[64];
             snprintf(header, sizeof(header), "tunnel_response/%.*s/%.*s",
@@ -149,6 +165,25 @@ int endpoint_request(struct gc_s *gc, struct proto_s *p, char **argv, int argc)
         return GC_ERROR;
     }
 
+    sn_initr(backend_port, argv[1], strlen(argv[1]));
+
+    if(port_allowed(gc, backend_port) != GC_OK) {
+        char header[64];
+        snprintf(header, sizeof(header), "tunnel_denied/%.*s",
+                                         sn_p(backend_port));
+        sn_initr(snheader, header, strlen(header));
+
+        struct proto_s pr = { .type = MESSAGE_TO };
+        sn_set(pr.u.message_to.to,      p->u.message_from.from_device);
+        sn_set(pr.u.message_to.address, p->u.message_from.from_address);
+        sn_set(pr.u.message_to.tp,      snheader);
+        sn_setr(pr.u.message_to.body,   "NULL", 4);
+
+        packet_send(gc, &pr);
+
+        return GC_OK;
+    }
+
     sn_initr(fd, argv[2], strlen(argv[2]));
 
     sn_bytes_new(key,    p->u.message_from.from_address.n + fd.n);
@@ -158,13 +193,11 @@ int endpoint_request(struct gc_s *gc, struct proto_s *p, char **argv, int argc)
     struct endpoint_s *ep = endpoint_find(key);
 
     if(!ep) {
-        sn_initr(backend_port, argv[1], strlen(argv[1]));
-        sn_initr(sd,           argv[2], strlen(argv[2]));
         sn_initr(remote_port,  argv[3], strlen(argv[3]));
         sn_init(pid, p->u.message_from.from_address);
 
         int ret;
-        ret = endpoint_add(key, sd, backend_port, remote_port,
+        ret = endpoint_add(key, fd, backend_port, remote_port,
                            pid, &ep);
         if(ret != GC_OK) return ret;
 
