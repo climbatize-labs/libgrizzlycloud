@@ -1,8 +1,8 @@
 #include <gc.h>
 
-static ev_timer connect_timer;
-
-struct gc_s *gc;
+//static ev_timer connect_timer;
+static struct gc_s *gclocal = NULL;
+int gc_sigterm = 0;
 
 int gc_message_from(struct gc_s *gc, struct proto_s *p)
 {
@@ -52,15 +52,17 @@ static void gc_cloud_offline(struct gc_s *gc, struct proto_s *p)
     tunnel_stop(p->u.offline_set.address);
 }
 
-static void release(struct client_ssl_s *c, enum gcerr_e error)
+static void callback_error(struct client_ssl_s *c, enum gcerr_e error)
 {
+    struct gc_s *gc;
+
+    gc = (struct gc_s *)c->base.gc;
     async_client_ssl_shutdown(c);
-    connect_timer.data = NULL;
-    ev_timer_again(gc->loop, &connect_timer);
+    ev_timer_again(gc->loop, &gc->connect_timer);
     (void)error;
 }
 
-static void receive(struct gc_s *gc, const void *buffer, const int nbuffer)
+static void callback_data(struct gc_s *gc, const void *buffer, const int nbuffer)
 {
     struct proto_s p;
     sn src = { .s = (char *)buffer + 4, .n = nbuffer - 4 };
@@ -122,9 +124,12 @@ static void receive(struct gc_s *gc, const void *buffer, const int nbuffer)
     }
 }
 
-static void try_connect(struct ev_loop *loop, struct ev_timer *timer, int revents)
+static void upstream_connect(struct ev_loop *loop, struct ev_timer *timer, int revents)
 {
-    ev_timer_stop(loop, &connect_timer);
+    struct gc_s *gc;
+    gc = (struct gc_s *)timer->data;
+
+    ev_timer_stop(loop, &gc->connect_timer);
 
     memset(&gc->client, 0, sizeof(gc->client));
 
@@ -134,10 +139,8 @@ static void try_connect(struct ev_loop *loop, struct ev_timer *timer, int revent
     gc->client.base.net.port = gc->port;
     snb_cpy_ds(gc->client.base.net.ip, gc->hostname);
 
-    gc->client.recv = receive;
-
-    gc->client.error_callback = release;
-    timer->data = gc;
+    gc->client.callback_data  = callback_data;
+    gc->client.callback_error = callback_error;
 
     async_client_ssl(gc);
     (void )revents;
@@ -155,56 +158,23 @@ int gc_deinit(struct gc_s *gc)
     ERR_remove_state(0);
     ERR_free_strings();
 
+    free(gc);
+
     ev_default_destroy();
 
     return 0;
 }
 
-int gc_init(struct ev_loop *loop, struct gc_s *callbacks)
-{
-    if(SSL_library_init() < 0) {
-        hm_log(LOG_CRIT, &gc->log, "Could not initialize OpenSSL library");
-        return GC_ERROR;
-    }
-
-    SSL_load_error_strings();
-
-    ev_init(&connect_timer, try_connect);
-
-    connect_timer.repeat = 2.0;
-    connect_timer.data = NULL;
-    gc = callbacks;
-
-    gc->net.buf.n = 0;
-    gc->net.buf.s = NULL;
-
-    ev_timer_again(loop, &connect_timer);
-
-    return GC_OK;
-}
-
-static void gc_upstream_force_stop(struct ev_loop *loop)
-{
-    ev_timer_stop(loop, &connect_timer);
-
-    async_client_ssl_shutdown(&gc->client);
-}
-
-void gc_force_stop()
-{
-    gc_config_free(&gc->config);
-    gc_upstream_force_stop(gc->loop);
-    tunnel_force_stop_all();
-    endpoints_force_stop_all();
-}
-
 static void sigh_terminate(int __attribute__ ((unused)) signo)
 {
-    hm_log(LOG_TRACE, &gc->log, "Received SIGTERM");
+    if(gc_sigterm == 1) return;
+
+    gc_sigterm = 1;
+    //hm_log(LOG_TRACE, &gc->log, "Received SIGTERM");
     gc_force_stop();
 }
 
-void gc_signals(struct gc_s *gc)
+static void gc_signals(struct gc_s *gc)
 {
     struct sigaction act;
 
@@ -231,7 +201,23 @@ void gc_signals(struct gc_s *gc)
     }
 }
 
-int gc_config_required(struct gc_config_s *cfg)
+static int config_init(struct gc_config_s *cfg, const char *filename)
+{
+    int ret;
+
+    ret = gc_config_parse(cfg, filename);
+    if(ret != GC_OK) {
+        hm_log(LOG_CRIT, cfg->log, "Parsing config file [%s] failed", filename);
+        return GC_ERROR;
+    }
+
+    assert(cfg->log);
+    gc_config_dump(cfg);
+
+    return GC_OK;
+}
+
+static int config_required(struct gc_config_s *cfg)
 {
     assert(cfg);
 
@@ -253,20 +239,72 @@ int gc_config_required(struct gc_config_s *cfg)
     return GC_OK;
 }
 
-int gc_config_init(struct gc_config_s *cfg, const char *filename)
+struct gc_s *gc_init(struct gc_init_s *init)
 {
-    int ret;
+    struct gc_s *gc = NULL;
 
-    ret = gc_config_parse(cfg, filename);
-    if(ret != GC_OK) {
-        hm_log(LOG_CRIT, cfg->log, "Parsing config file [%s] failed", filename);
-        return GC_ERROR;
+    assert(init);
+
+    gc = gclocal = malloc(sizeof(*gc));
+    memset(gc, 0, sizeof(*gc));
+
+    if(hm_log_open(&gc->log, NULL, LOG_TRACE) != GC_OK) {
+        return NULL;
     }
 
-    assert(cfg->log);
-    gc_config_dump(cfg);
+    gc->config.log = &gc->log;
+    if(config_init(&gc->config, init->cfgfile) != GC_OK) {
+        hm_log(LOG_CRIT, &gc->log, "Could not initialize config file");
+        return NULL;
+    }
 
-    return GC_OK;
+    if(config_required(&gc->config) != GC_OK) {
+        hm_log(LOG_CRIT, &gc->log, "Mandatory configuration parameters are missing");
+        return NULL;
+    }
+
+    // Copy over initialization settings
+    gc->loop            = init->loop;
+    gc->state_changed   = init->state_changed;
+
+    gc->callback_login       = init->callback_login;
+    gc->callback_device_pair = init->callback_device_pair;
+
+    gc->hostname = init->hostname;
+    gc->port     = init->port;
+
+    // Initialize signals
+    gc_signals(gc);
+
+    if(SSL_library_init() < 0) {
+        hm_log(LOG_CRIT, &gc->log, "Could not initialize OpenSSL library");
+        return NULL;
+    }
+
+    SSL_load_error_strings();
+
+    // Try to connect to upstream every .repeat seconds
+    ev_init(&gc->connect_timer, upstream_connect);
+    gc->connect_timer.repeat = 2.0;
+    gc->connect_timer.data = gc;
+    ev_timer_again(gc->loop, &gc->connect_timer);
+
+    return gc;
+}
+
+static void gc_upstream_force_stop(struct ev_loop *loop)
+{
+    ev_timer_stop(loop, &gclocal->connect_timer);
+
+    async_client_ssl_shutdown(&gclocal->client);
+}
+
+void gc_force_stop()
+{
+    gc_config_free(&gclocal->config);
+    gc_upstream_force_stop(gclocal->loop);
+    tunnel_force_stop_all();
+    endpoints_force_stop_all();
 }
 
 void gc_config_free(struct gc_config_s *cfg)

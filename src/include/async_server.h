@@ -40,14 +40,8 @@ enum gcerr_e {
 };
 
 struct client_ssl_s;
-//struct conn_client_s;
 struct tunnel_s *tunnel;
-
-struct conn_client_holder_s {
-    int signal_shutdown;
-    struct conn_client_s *client;
-    struct conn_client_holder_s *next;
-};
+struct conn_client_s;
 
 struct conn_server_s {
     struct ev_loop *loop;
@@ -56,17 +50,18 @@ struct conn_server_s {
 
     struct tunnel_s *tunnel;
 
-    struct conn_client_holder_s *clients_head;
-    int clients;
-
     struct ev_io listener;
     int fd;
 
     const char *host;
     const char *port;
 
-    void (*recv)(struct conn_client_s *data, char *buf, const int len);
+    struct ht_s **ht;
+
+    void (*callback_data)(struct conn_client_s *data, char *buf, const int len);
     void (*shutdown)();
+
+    struct gc_s *gc;
 };
 
 struct client_s {
@@ -79,8 +74,6 @@ struct client_s {
 
     int fd;
 
-    int want_shutdown;
-
     struct ringbuffer_s rb;
 
     enum flags_e flags;
@@ -92,7 +85,7 @@ struct client_s {
 
     char date[32];
 
-    void *data;
+    struct gc_s *gc;
 };
 
 struct conn_client_s {
@@ -102,8 +95,8 @@ struct conn_client_s {
     int net_nbuf;
     int net_expect;
 
-    void (*recv)(struct conn_client_s *client, char *buf, int len);
-    void (*error_callback)(struct conn_client_s *client, enum clerr_e error);
+    void (*callback_data)(struct conn_client_s *client, char *buf, int len);
+    void (*callback_error)(struct conn_client_s *client, enum clerr_e error);
 
     struct conn_server_s *parent;
     struct conn_client_holder_s *holder;
@@ -126,15 +119,15 @@ struct client_ssl_s {
     struct ev_io ev_r_handshake;
     struct ev_io ev_w_handshake;
 
-    void (*recv)(struct gc_s *gc, const void *buffer, const int nbuffer);
-    void (*error_callback)(struct client_ssl_s *client, enum gcerr_e error);
+    void (*callback_data)(struct gc_s *gc, const void *buffer, const int nbuffer);
+    void (*callback_error)(struct client_ssl_s *client, enum gcerr_e error);
 
     void (*terminate_cb)(struct client_ssl_s *client, int error);
 
     void (*connected)(struct client_ssl_s *client);
 };
 
-int async_server(struct conn_server_s *cs);
+int async_server(struct conn_server_s *cs, struct gc_s *gc);
 void async_server_shutdown(struct conn_server_s *cs);
 
 int async_client(struct conn_client_s *client);

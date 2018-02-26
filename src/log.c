@@ -83,7 +83,7 @@ int hm_log_open(struct hm_log_s *l, const char *filename, const int priority)
     if(filename != NULL) {
         l->file = fopen(filename, "a");
         if(l->file == NULL) {
-            return -1;
+            return GC_ERROR;
         }
         l->fd = fileno(l->file);
     } else {
@@ -93,7 +93,7 @@ int hm_log_open(struct hm_log_s *l, const char *filename, const int priority)
 
     l->priority = priority;
 
-    return 0;
+    return GC_OK;
 }
 
 int hm_log_close(struct hm_log_s *l)

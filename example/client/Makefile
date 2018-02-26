@@ -11,7 +11,7 @@ lib:
 	make -C ../../
 
 client:
-	$(CC) $(INCS) main.c $(LIBDIR) $(LIBS) -o $(BIN)
+	$(CC) -g -Wall $(INCS) main.c $(LIBDIR) $(LIBS) -o $(BIN)
 
 lib_clean:
 	make clean -C ../../

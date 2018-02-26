@@ -66,7 +66,8 @@ static void endpoint_recv(struct conn_client_s *client, char *buf, int len)
             hm_log(LOG_TRACE, client->base.log, "Sending header [%.*s] and payload of %d bytes to upstream",
                                                 sn_p(snheader), len);
 
-            packet_send(gc, &pr);
+            assert(client->base.gc);
+            packet_send(client->base.gc, &pr);
 
             return;
         }
@@ -86,7 +87,8 @@ static void endpoint_error(struct conn_client_s *c, enum clerr_e error)
 }
 
 static int endpoint_add(sn key, sn remote_fd, sn backend_port,
-                        sn remote_port, sn pid, struct endpoint_s **ep)
+                        sn remote_port, sn pid, struct endpoint_s **ep,
+                        struct gc_s *gc)
 {
     struct endpoint_s *ent;
     ent = malloc(sizeof(*ent));
@@ -120,8 +122,10 @@ static int endpoint_add(sn key, sn remote_fd, sn backend_port,
     snb_cpy_ds(client->base.net.ip, ip);
 
     client->base.net.port  = bp;
-    client->recv           = endpoint_recv;
-    client->error_callback = endpoint_error;
+    client->callback_data  = endpoint_recv;
+    client->callback_error = endpoint_error;
+
+    client->base.gc = gc;
 
     int ret;
     ret = async_client(client);
@@ -198,7 +202,7 @@ int endpoint_request(struct gc_s *gc, struct proto_s *p, char **argv, int argc)
 
         int ret;
         ret = endpoint_add(key, fd, backend_port, remote_port,
-                           pid, &ep);
+                           pid, &ep, gc);
         if(ret != GC_OK) return ret;
 
         hm_log(LOG_TRACE, &gc->log, "Adding endpoint");

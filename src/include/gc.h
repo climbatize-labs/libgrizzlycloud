@@ -36,6 +36,7 @@
 #include <proto.h>
 
 #include <ringbuffer.h>
+#include <hashtable.h>
 #include <async_server.h>
 #include <gcapi.h>
 #include <endpoint.h>
