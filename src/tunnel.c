@@ -5,17 +5,18 @@ static struct tunnel_s    *tunnels  = NULL;
 static struct conn_client_s *tunnel_client_find(sn port, sn fd)
 {
     struct tunnel_s *t;
-    struct conn_client_holder_s *holder;
+    struct ht_s *kv;
 
     for(t = tunnels; t != NULL; t = t->next) {
-        for(holder = t->server->clients_head; holder != NULL; holder = holder->next) {
-            sn_itoa(client_fd, holder->client->base.fd, 8);
+        if(!sn_cmps(t->port_remote, port)) continue;
 
-            if(sn_cmps(t->port_remote, port) &&
-               sn_cmps(client_fd, fd)) {
-                return holder->client;
-            }
-        }
+        char key[16];
+        snprintf(key, sizeof(key), "%.*s", sn_p(fd));
+        kv = ht_get(t->server->ht, key, strlen(key));
+
+        if(!kv) continue;
+
+        return (struct conn_client_s *)kv->s;
     }
 
     return NULL;
@@ -98,7 +99,7 @@ static void client_data(struct conn_client_s *client, char *buf, const int len)
     sn_set(m.u.message_to.body,    payload);
     sn_set(m.u.message_to.tp,      snheader);
 
-    packet_send(gc, &m);
+    packet_send(client->base.gc, &m);
 }
 
 static int alloc_server(struct gc_s *gc, struct conn_server_s **c, sn port_local)
@@ -111,15 +112,18 @@ static int alloc_server(struct gc_s *gc, struct conn_server_s **c, sn port_local
     (*c)->loop = gc->loop;
     (*c)->log  = &gc->log;
     (*c)->pool = NULL;
-    (*c)->recv = client_data;
+    (*c)->callback_data = client_data;
     (*c)->host = "0.0.0.0";
 
     sn_to_char(port, port_local, 32);
     (*c)->port = port;
 
     int ret;
-    ret = async_server(*c);
-    if(ret != GC_OK) return ret;
+    ret = async_server(*c, gc);
+    if(ret != GC_OK) {
+        free(*c);
+        return ret;
+    }
 
     return GC_OK;
 }
@@ -160,7 +164,7 @@ int tunnel_add(struct gc_s *gc, struct gc_device_pair_s *pair, sn type)
 void tunnel_stop(sn pid)
 {
     struct tunnel_s *t, *prev;
-    for(t = tunnels; t != NULL; prev = t, t = t->next) {
+    for(t = tunnels, prev = NULL; t != NULL; prev = t, t = t->next) {
         if(sn_cmps(t->pid, pid)) {
 
             if(prev) prev->next = t->next;

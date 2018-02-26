@@ -73,14 +73,16 @@ static void upstream_state_changed(struct gc_s *gc, enum gc_state_e state)
         break;
     }
 }
-
+/*
 int main(int argc, char **argv)
 {
     struct gc_s gc;
 
     memset(&gc, 0, sizeof(gc));
 
-    hm_log_open(&gc.log, NULL, LOG_TRACE);
+    if(hm_log_open(&gc.log, NULL, LOG_TRACE) != GC_OK) {
+        exit(1);
+    }
 
     if(argc != 2) {
         hm_log(LOG_CRIT, &gc.log, "Please specify config file");
@@ -99,8 +101,6 @@ int main(int argc, char **argv)
 
     gc.loop = ev_default_loop(0);
 
-    gc_signals(&gc);
-
     gc.state_changed  = upstream_state_changed;
 
     gc.callback_login        = callback_login;
@@ -114,6 +114,34 @@ int main(int argc, char **argv)
     ev_run(gc.loop, 0);
 
     gc_deinit(&gc);
+
+    return 0;
+}
+*/
+int main(int argc, char **argv)
+{
+    struct gc_init_s gci;
+    struct gc_s *gc;
+
+    if(argc != 2) {
+        exit(1);
+    }
+
+    gci.loop                 = ev_default_loop(0);
+    gci.cfgfile              = argv[1];
+    gci.state_changed        = upstream_state_changed;
+    gci.callback_login       = callback_login;
+    gci.callback_device_pair = callback_pair;
+    gci.port                 = GC_DEFAULT_PORT;
+    sn_setz(gci.hostname, "localhost");
+
+    gc = gc_init(&gci);
+    if(gc == NULL) {
+        return 1;
+    }
+
+    ev_run(gci.loop, 0);
+    gc_deinit(gc);
 
     return 0;
 }

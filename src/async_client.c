@@ -13,7 +13,7 @@ static void recv_append(struct gc_s *gc)
         rb->recv.target += 4;
 
         if(rb->recv.target <= 0) {
-            c->error_callback(c, GC_PACKETEXPECT_ERR);
+            c->callback_error(c, GC_PACKETEXPECT_ERR);
             return;
         }
     }
@@ -25,8 +25,8 @@ static void recv_append(struct gc_s *gc)
 
         ringbuffer_recv_pop(rb);
 
-        if(c->recv) {
-            c->recv(gc, c->net_buf, c->net_nbuf);
+        if(c->callback_data) {
+            c->callback_data(gc, c->net_buf, c->net_nbuf);
         }
     }
 }
@@ -44,7 +44,6 @@ int async_client_ssl_shutdown(struct client_ssl_s *c)
     ev_timer_stop(c->base.loop, &c->ping);
     ev_timer_stop(c->base.loop, &c->pong);
 
-    //c->want_shutdown = 1;
     c->base.flags |= GC_WANT_SHUTDOWN;
 
     if(c->ssl) SSL_free(c->ssl);
@@ -70,29 +69,6 @@ int async_client_ssl_shutdown(struct client_ssl_s *c)
     return GC_OK;
 }
 
-/*
-static void async_handle_socket_errno(struct client_ssl_s *c)
-{
-    if(errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
-        return;
-    }
-
-    if(c == NULL) {
-        return;
-    }
-
-    if(errno == ECONNRESET) {
-        printf("Connection reset by peer\n");
-    } else if(errno == ETIMEDOUT) {
-        printf("Connection to backend timed out\n");
-    } else if(errno == EPIPE) {
-        printf("Broken pipe to backend (EPIPE)\n");
-    } else {
-        printf("errno: %d\n", errno);
-    }
-}
-*/
-
 static void async_read_ssl(struct ev_loop *loop, ev_io *w, int revents)
 {
     (void) revents;
@@ -102,29 +78,30 @@ static void async_read_ssl(struct ev_loop *loop, ev_io *w, int revents)
 
     (void)revents;
 
+    if(gc_sigterm == 1) return;
+
     if(EQFLAG(c->base.flags, GC_WANT_SHUTDOWN)) {
-        if(c->error_callback) {
-            c->error_callback(c, GC_WANTSHUTDOWN_ERR);
+        if(c->callback_error) {
+            c->callback_error(c, GC_WANTSHUTDOWN_ERR);
         }
         return;
     }
 
-again:
     t = SSL_read(c->ssl, c->base.rb.recv.tmp, RB_SLOT_SIZE);
 
     /*
        EAGAIN or EWOULDBLOCK The socket is marked nonblocking and the receive operation would block, or a receive timeout had been set and the timeout expired before data was received.
-     */
     if(t == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) goto again;
+    */
 
     if(t > 0) {
         ringbuffer_recv_append(&c->base.rb, t);
         /*
         FIXME: add MAX so we don't spend all memory
-        if (ringbuffer_recv_is_full(&c->rb)) {
+        if(ringbuffer_recv_is_full(&c->rb)) {
         ev_io_stop(c->loop, &c->read);
-        if(c->error_callback) {
-        c->error_callback(c, GC_READRBFULL_ERR);
+        if(c->callback_error) {
+        c->callback_error(c, GC_READRBFULL_ERR);
         }
         return;
         }
@@ -134,13 +111,13 @@ again:
 
     } else if(t == 0) {
         async_handle_socket_errno(c->base.log);
-        if(c->error_callback) {
-            c->error_callback(c, GC_READZERO_ERR);
+        if(c->callback_error) {
+            c->callback_error(c, GC_READZERO_ERR);
         }
     } else {
         async_handle_socket_errno(c->base.log);
-        if(c->error_callback) {
-            c->error_callback(c, GC_READ_ERR);
+        if(c->callback_error) {
+            c->callback_error(c, GC_READ_ERR);
         }
     }
 }
@@ -153,9 +130,11 @@ static void async_write_ssl(struct ev_loop *loop, ev_io *w, int revents)
     struct client_ssl_s *c = &gc->client;
     int sz;
 
+    if(gc_sigterm == 1) return;
+
     if(EQFLAG(c->base.flags, GC_WANT_SHUTDOWN)) {
-        if(c->error_callback) {
-            c->error_callback(c, GC_WANTSHUTDOWN_ERR);
+        if(c->callback_error) {
+            c->callback_error(c, GC_WANTSHUTDOWN_ERR);
         }
         return;
     }
@@ -167,9 +146,7 @@ static void async_write_ssl(struct ev_loop *loop, ev_io *w, int revents)
         return;
     }
 
-again:
     t = SSL_write(c->ssl, next, sz);
-    //printf("ssl written %d bytes\n", t);
     /*
        EAGAIN or EWOULDBLOCK The socket is marked nonblocking and the receive operation would block, or a receive timeout had been set and the timeout expired before data was received.
      */
@@ -190,8 +167,8 @@ again:
             c->terminate_cb = NULL;
         } else {
             async_handle_socket_errno(c->base.log);
-            if(c->error_callback) {
-                c->error_callback(c, GC_WRITE_ERR);
+            if(c->callback_error) {
+                c->callback_error(c, GC_WRITE_ERR);
             }
         }
     }
@@ -221,12 +198,11 @@ static void start_handshake(struct gc_s *gc, int err)
     ev_io_stop(c->base.loop, &c->base.read);
     ev_io_stop(c->base.loop, &c->base.write);
 
-    //c->handshaked = 0;
     c->base.flags &= ~GC_HANDSHAKED;
 
     if(err == SSL_ERROR_WANT_READ) {
         ev_io_start(c->base.loop, &c->ev_r_handshake);
-    } else if (err == SSL_ERROR_WANT_WRITE) {
+    } else if(err == SSL_ERROR_WANT_WRITE) {
         ev_io_start(c->base.loop, &c->ev_w_handshake);
     }
 }
@@ -238,12 +214,12 @@ static void handle_connect(struct ev_loop *loop, ev_io *w, int revents)
     struct gc_s *gc = (struct gc_s *)w->data;
     struct client_ssl_s *c = &gc->client;
     t = connect(c->base.fd, (struct sockaddr *)&(c->servaddr), sizeof(c->servaddr));
-    if (!t || errno == EISCONN || !errno) {
+    if(!t || errno == EISCONN || !errno) {
         ev_io_stop(loop, &c->ev_w_connect);
 
         start_handshake(gc, SSL_ERROR_WANT_WRITE);
     }
-    else if (errno == EINPROGRESS || errno == EINTR || errno == EALREADY) {
+    else if(errno == EINPROGRESS || errno == EINTR || errno == EALREADY) {
         /* do nothing, we'll get phoned home again... */
     }
     else {
@@ -261,7 +237,6 @@ static void end_handshake(struct client_ssl_s *c)
         c->ssl->s3->flags |= SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS;
     }
 
-    //c->handshaked = 1;
     c->base.flags |= GC_HANDSHAKED;
 
     ev_io_start(c->base.loop, &c->base.read);
@@ -270,7 +245,7 @@ static void end_handshake(struct client_ssl_s *c)
         ev_io_start(c->base.loop, &c->base.write);
     }
 
-    struct gc_s *gc = c->base.data;
+    struct gc_s *gc = c->base.gc;
     assert(gc);
     if(gc && gc->state_changed) gc->state_changed(gc, GC_HANDSHAKE_SUCCESS);
 }
@@ -283,25 +258,20 @@ static void client_handshake(struct ev_loop *loop, ev_io *w, int revents)
     struct client_ssl_s *c = &gc->client;
 
     t = SSL_do_handshake(c->ssl);
-    if (t == 1) {
+    if(t == 1) {
         end_handshake(c);
     }
     else {
         int err = SSL_get_error(c->ssl, t);
-        if (err == SSL_ERROR_WANT_READ) {
-            //printf("error read %d\n", err);
+        if(err == SSL_ERROR_WANT_READ) {
             ev_io_stop(loop, &c->ev_w_handshake);
             ev_io_start(loop, &c->ev_r_handshake);
-        }
-        else if (err == SSL_ERROR_WANT_WRITE) {
-            //printf("error write %d\n", err);
+        } else if(err == SSL_ERROR_WANT_WRITE) {
             ev_io_stop(loop, &c->ev_r_handshake);
             ev_io_start(loop, &c->ev_w_handshake);
-        }
-        else if (err == SSL_ERROR_ZERO_RETURN) {
+        } else if(err == SSL_ERROR_ZERO_RETURN) {
             printf("Connection closed (in handshake)\n");
-        }
-        else {
+        } else {
             printf("Unexpected SSL error (in handshake): %d\n", err);
         }
     }
@@ -372,7 +342,7 @@ int async_client_ssl(struct gc_s *gc)
     client->ssl = ssl;
     client->ctx = ctx;
 
-    client->base.data = gc;
+    client->base.gc = gc;
     client->base.read.data = gc;
     client->base.write.data = gc;
     client->ev_r_handshake.data = gc;
@@ -410,7 +380,7 @@ static void recv_append_client(struct conn_client_s *c)
     char *next;
 
     next = ringbuffer_recv_read(&c->base.rb, &sz);
-    c->recv(c, next, sz);
+    c->callback_data(c, next, sz);
     ringbuffer_recv_pop(&c->base.rb);
 }
 
@@ -421,6 +391,8 @@ static void async_read(struct ev_loop *loop, ev_io *w, int revents)
     struct conn_client_s *c;
     int fd;
 
+    if(gc_sigterm == 1) return;
+
     assert(w);
     c = (struct conn_client_s *)w->data;
     fd = w->fd;
@@ -428,8 +400,8 @@ static void async_read(struct ev_loop *loop, ev_io *w, int revents)
     assert(c);
 
     if(EQFLAG(c->base.flags, GC_WANT_SHUTDOWN)) {
-        if(c->error_callback) {
-            c->error_callback(c, CL_WANTSHUTDOWN_ERR);
+        if(c->callback_error) {
+            c->callback_error(c, CL_WANTSHUTDOWN_ERR);
         }
 
         return;
@@ -440,13 +412,12 @@ static void async_read(struct ev_loop *loop, ev_io *w, int revents)
     hm_log(LOG_TRACE, c->base.log, "Received %d bytes from fd %d", sz, fd);
 
     if(sz > 0) {
-        //NETDUMP(1, buf, t)
         ringbuffer_recv_append(&c->base.rb, sz);
 
         if(ringbuffer_recv_is_full(&c->base.rb)) {
             ev_io_stop(c->base.loop, &c->base.read);
-            if(c->error_callback) {
-                c->error_callback(c, CL_READRBFULL_ERR);
+            if(c->callback_error) {
+                c->callback_error(c, CL_READRBFULL_ERR);
             }
             return;
         }
@@ -454,14 +425,14 @@ static void async_read(struct ev_loop *loop, ev_io *w, int revents)
         recv_append_client(c);
 
     } else if(sz == 0) {
-        //async_handle_socket_errno(c);
-        if(c->error_callback) {
-            c->error_callback(c, CL_READZERO_ERR);
+        async_handle_socket_errno(c->base.log);
+        if(c->callback_error) {
+            c->callback_error(c, CL_READZERO_ERR);
         }
     } else {
-        //async_handle_socket_errno(c);
-        if(c->error_callback) {
-            c->error_callback(c, CL_READ_ERR);
+        async_handle_socket_errno(c->base.log);
+        if(c->callback_error) {
+            c->callback_error(c, CL_READ_ERR);
         }
     }
 }
@@ -472,6 +443,8 @@ static void async_write(struct ev_loop *loop, ev_io *w, int revents)
     struct conn_client_s *c;
     int fd;
     int sz;
+
+    if(gc_sigterm == 1) return;
 
     assert(w);
     c = (struct conn_client_s *)w->data;
@@ -496,17 +469,15 @@ static void async_write(struct ev_loop *loop, ev_io *w, int revents)
     hm_log(LOG_TRACE, c->base.log, "%d bytes sent to fd %d", sz, fd);
 
     if(sz > 0) {
-        //NETDUMP(0, next, t)
         ringbuffer_send_skip(&c->base.rb, sz);
         if(ringbuffer_send_is_empty(&c->base.rb)) {
             ev_io_stop(loop, &c->base.write);
         }
     } else {
-        //assert(t == -1);
-        //async_handle_socket_errno(c);
+        async_handle_socket_errno(c->base.log);
         ev_io_stop(loop, &c->base.write);
-        if(c->error_callback) {
-            c->error_callback(c, CL_WRITE_ERR);
+        if(c->callback_error) {
+            c->callback_error(c, CL_WRITE_ERR);
         }
     }
 }
@@ -521,7 +492,7 @@ int async_client(struct conn_client_s *client)
     client->base.fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if(client->base.fd == -1) {
         hm_log(LOG_ERR, client->base.log, "{Connector}: client init socket error: %d", errno);
-        client->error_callback(client, CL_SOCKET_ERR);
+        client->callback_error(client, CL_SOCKET_ERR);
         return GC_ERROR;
     }
 

@@ -3,11 +3,11 @@
 int async_client_shutdown(struct conn_client_s *c)
 {
     assert(c);
+    struct hm_pool_s *p = c->base.pool;
 
     ev_io_stop(c->base.loop, &c->base.read);
     ev_io_stop(c->base.loop, &c->base.write);
 
-    //c->want_shutdown = 1;
     c->base.flags |= GC_WANT_SHUTDOWN;
 
     ringbuffer_send_pop_all(&c->base.rb);
@@ -20,10 +20,15 @@ int async_client_shutdown(struct conn_client_s *c)
     ret = fd_close(c->base.fd);
     if(ret != GC_OK) {
         hm_log(LOG_TRACE, c->base.log, "File descriptor %d failed to closed",
-                                  c->base.fd);
+                                       c->base.fd);
     }
 
-    struct hm_pool_s *p = c->base.pool;
+    if(c->parent) {
+        char key[16];
+        snprintf(key, sizeof(key), "%d", c->base.fd);
+        ht_rem(c->parent->ht, key, strlen(key), p);
+    }
+
     hm_pfree(p, c);
 
     return GC_OK;
@@ -44,7 +49,7 @@ inline static void recv_append(struct conn_client_s *c)
     assert(c);
 
     buffer = ringbuffer_recv_read(&c->base.rb, &sz);
-    c->recv(c, buffer, sz);
+    c->callback_data(c, buffer, sz);
     ringbuffer_recv_pop(&c->base.rb);
 }
 
@@ -73,6 +78,8 @@ static void async_read(struct ev_loop *loop, ev_io *w, int revents)
     struct conn_client_s *c;
     int fd;
 
+    if(gc_sigterm == 1) return;
+
     assert(w);
     c = (struct conn_client_s *)w->data;
     fd = w->fd;
@@ -80,8 +87,8 @@ static void async_read(struct ev_loop *loop, ev_io *w, int revents)
     assert(c);
 
     if(EQFLAG(c->base.flags, GC_WANT_SHUTDOWN)) {
-        if(c->error_callback) {
-            c->error_callback(c, CL_WANTSHUTDOWN_ERR);
+        if(c->callback_error) {
+            c->callback_error(c, CL_WANTSHUTDOWN_ERR);
         }
         return;
     }
@@ -93,8 +100,8 @@ static void async_read(struct ev_loop *loop, ev_io *w, int revents)
 
         if(ringbuffer_recv_is_full(&c->base.rb)) {
             ev_io_stop(c->base.loop, &c->base.read);
-            if(c->error_callback) {
-                c->error_callback(c, CL_READRBFULL_ERR);
+            if(c->callback_error) {
+                c->callback_error(c, CL_READRBFULL_ERR);
             }
             return;
         }
@@ -104,14 +111,14 @@ static void async_read(struct ev_loop *loop, ev_io *w, int revents)
     } else if(sz == 0) {
         ev_io_stop(c->base.loop, &c->base.read);
         async_handle_socket_errno(c->base.log);
-        if(c->error_callback) {
-            c->error_callback(c, CL_READZERO_ERR);
+        if(c->callback_error) {
+            c->callback_error(c, CL_READZERO_ERR);
         }
     } else {
         ev_io_stop(c->base.loop, &c->base.read);
         async_handle_socket_errno(c->base.log);
-        if(c->error_callback) {
-            c->error_callback(c, CL_READ_ERR);
+        if(c->callback_error) {
+            c->callback_error(c, CL_READ_ERR);
         }
     }
 }
@@ -122,6 +129,8 @@ static void async_write(struct ev_loop *loop, ev_io *w, int revents)
     struct conn_client_s *c;
     int fd;
     int sz;
+
+    if(gc_sigterm == 1) return;
 
     assert(w);
     c = (struct conn_client_s *)w->data;
@@ -149,8 +158,8 @@ static void async_write(struct ev_loop *loop, ev_io *w, int revents)
         }
     } else {
         async_handle_socket_errno(c->base.log);
-        if(c->error_callback) {
-            c->error_callback(c, CL_WRITE_ERR);
+        if(c->callback_error) {
+            c->callback_error(c, CL_WRITE_ERR);
         }
     }
 }
@@ -170,32 +179,19 @@ static int async_client_accept(struct conn_client_s *client)
     return GC_OK;
 }
 
-static void *connector_addclient(struct conn_server_s *cs, struct conn_client_s *cc)
+static int connector_addclient(struct conn_server_s *cs, struct conn_client_s *cc)
 {
-    struct conn_client_holder_s *cch;
-
-    cch = hm_palloc(cs->pool, sizeof(*cch));
-
-    if(cch == NULL) {
-        hm_log(LOG_ERR, cs->log, "{Connector}: Memory allocation failed");
-        return NULL;
+    char key[8];
+    snprintf(key, sizeof(key), "%d", cc->base.fd);
+    if(HT_ADD_WA(cs->ht, key, strlen(key), cc, sizeof(cc), cs->pool) != GC_OK) {
+        hm_log(LOG_ERR, cs->log, "{Connector}: Cannot add key [%s] to hashtable", key);
+        return GC_ERROR;
     }
 
-    memset(cch, 0, sizeof(*cch));
+    hm_log(LOG_NOTICE, cs->log, "{Connector}: adding client %.*s:%d:%d",
+                                sn_p(cc->base.net.ip), cc->base.fd, cc->base.net.port);
 
-    cch->client = cc;
-    cch->next = cs->clients_head;
-
-    cs->clients_head = cch;
-    cs->clients++;
-
-    cc->holder = cch;
-
-    hm_log(LOG_NOTICE, cs->log, "{Connector}: adding client %.*s:%d:%d, total: %d",
-                                sn_p(cc->base.net.ip), cc->base.fd, cc->base.net.port,
-                                cs->clients);
-
-    return cch;
+    return GC_OK;
 }
 
 static void server_async_client(struct ev_loop *loop, ev_io *w, int revents)
@@ -206,6 +202,8 @@ static void server_async_client(struct ev_loop *loop, ev_io *w, int revents)
     int client;
     struct conn_client_s *cc;
     struct conn_server_s *cs = w->data;
+
+    if(gc_sigterm == 1) return;
 
     assert(cs);
 
@@ -290,24 +288,25 @@ static void server_async_client(struct ev_loop *loop, ev_io *w, int revents)
     cc->base.log = cs->log;
     cc->base.read.data = cc;
     cc->base.write.data = cc;
+    cc->base.gc = cs->gc;
     cc->parent = cs;
-    cc->error_callback = client_error;
+    cc->callback_error = client_error;
 #ifdef PEER_NAME
     sn_initz(snip, ipstr);
     snb_cpy_ds(cc->base.net.ip, snip);
     cc->base.net.port = pport;
 #endif
 
-    if(connector_addclient(cs, cc) == NULL) {
+    if(connector_addclient(cs, cc) != GC_OK) {
         hm_pfree(cs->pool, cc);
         return;
     }
 
-    cc->recv = cs->recv;
+    cc->callback_data = cs->callback_data;
     async_client_accept(cc);
 }
 
-int async_server(struct conn_server_s *cs)
+int async_server(struct conn_server_s *cs, struct gc_s *gc)
 {
     struct addrinfo *ai, hints;
     memset(&hints, 0, sizeof hints);
@@ -352,8 +351,16 @@ int async_server(struct conn_server_s *cs)
     cs->listener.data = cs;
     ev_io_start(cs->loop, &cs->listener);
 
+    cs->ht = ht_init(cs->pool);
+    if(!cs->ht) {
+        hm_log(LOG_CRIT, cs->log, "Hashtable failed to initialize");
+        return GC_ERROR;
+    }
+
     hm_log(LOG_TRACE, cs->log, "Opening async server on %s:%s fd: %d %p",
                                cs->host, cs->port, cs->fd, cs);
+
+    cs->gc = gc;
 
     return GC_OK;
 }
@@ -364,13 +371,16 @@ void async_server_shutdown(struct conn_server_s *s)
     struct hm_pool_s *p = s->pool;
 
     ev_io_stop(s->loop, &s->listener);
-    struct conn_client_holder_s *c;
+    struct conn_client_s *c;
 
-    for(c = s->clients_head; c != NULL; c = c->next) {
-        async_client_shutdown(c->client);
+    int i;
+    for(i = 0; i < HT_MAX; i++) {
+        if(!s->ht[i]) continue;
+        c = (struct conn_client_s *)s->ht[i]->s;
+        if(c) async_client_shutdown(c);
     }
 
-    hm_pfree(p, s->clients_head);
+    ht_free(s->ht, s->pool);
 
     hm_pfree(p, s);
 }

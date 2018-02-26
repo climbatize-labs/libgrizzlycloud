@@ -53,10 +53,28 @@ struct gc_device_pair_s {
     sn type;
 };
 
+struct gc_init_s {
+    struct ev_loop *loop;
+
+    sn hostname;
+    int port;
+
+    const char *cfgfile;
+
+    void (*state_changed)(struct gc_s *gc, enum gc_state_e state);
+
+    // callbacks
+    void (*callback_login)(struct gc_s *gc, sn error);
+    void (*callback_device_pair)(struct gc_s *gc, struct gc_device_pair_s *pair);
+};
+
 struct gc_s {
     struct ev_loop   *loop;
     struct hm_pool_s *pool;
     struct hm_log_s  log;
+
+    struct ev_timer connect_timer;
+    struct ev_signal signal;
 
     //void (*message_to_set_reply)(struct gc_s *gc, struct proto_s *p);
     void (*message_from)(struct gc_s *gc, char *device, int ndevice, char *msg, int nmsg, char *type, int ntype);
@@ -81,9 +99,7 @@ struct gc_s {
     } net;
 };
 
-int gc_send(sn **dst, int ndst, sn *msg, sn *type);
-int gc_online(struct gc_s *gc);
-int gc_init(struct ev_loop *loop, struct gc_s *gc);
+struct gc_s *gc_init(struct gc_init_s *init);
 int gc_deinit(struct gc_s *gc);
 int gc_reinit_size(struct gc_s *gc, int size);
 
@@ -93,12 +109,10 @@ extern struct ev_loop *loop;
 extern struct hm_log_s gclog;
 extern struct hm_pool_s pool;
 
-extern struct gc_s *gc;
-
-void gc_signals(struct gc_s *gc);
-
-int gc_config_init(struct gc_config_s *cfg, const char *filename);
+int  gc_config_init(struct gc_config_s *cfg, const char *filename);
 void gc_config_free(struct gc_config_s *cfg);
-int gc_config_required(struct gc_config_s *cfg);
+int  gc_config_required(struct gc_config_s *cfg);
+
+extern int gc_sigterm;
 
 #endif
