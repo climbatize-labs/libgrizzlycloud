@@ -80,7 +80,7 @@ void gen_ev_send(struct conn_client_s *client, char *buf, const int len)
             &client->base.write, buf, len);
 }
 
-int packet_send(struct gc_s *gc, struct proto_s *pr)
+int gc_packet_send(struct gc_s *gc, struct proto_s *pr)
 {
     sn dst;
     if(serialize(&dst, pr) != GC_OK) {
