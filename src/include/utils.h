@@ -1,3 +1,22 @@
+/*
+ *
+ * GrizzlyCloud library - simplified VPN alternative for IoT
+ * Copyright (C) 2016 - 2017 Filip Pancik
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 #ifndef UTILS_H_
 #define UTILS_H_
 
@@ -160,50 +179,107 @@
 
 #define EQFLAG(m_dst, m_flag) ((m_dst & m_flag) == m_flag)
 
-enum gc_error_e {
-    GC_OK,
-    GC_ERROR
+/**
+ * @brief GC enum.
+ *
+ * Used as an internal function return value error indicator.
+ */
+enum gc_e {
+    GC_OK,      /**< Non error return. */
+    GC_ERROR    /**< Generic error. */
 };
 
-struct mem_s {
-    char *s;
-    int n;
-    int size;
-};
-
+/**
+ * @brief Memory region S of N characters.
+ *
+ * Defines memory region for later manipulation.
+ */
 typedef struct sn_s {
-    char *s;
-    int n;
-    int offset;
+    char *s;     /**< Pointer to a memory region */
+    int  n;      /**< Size of memory region */
+    int  offset; /**< Offset from start of region */
 } sn;
 
+/**
+ * @brief Preallocated memory region S of sizeof(S) characters.
+ *
+ * Defines memory region for later manipulation
+ */
 typedef struct snb_s {
-    char s[256];
-    int n;
-    int offset;
+    char s[256];  /**< Pointer to a memory region */
+    int  n;       /**< Size of memory region snb#s */
+    int  offset;  /**< Offset from start of region */
 } snb;
-
-struct pair_s {
-    sn cloud;
-    sn device;
-    int port_local;
-    int port_remote;
-};
 
 struct gc_s;
 struct proto_s;
 struct gc_config_s;
 
+/**
+ * @brief Dump config.
+ *
+ * Dumps configuration structure
+ * @param cfg Config structure
+ * @return void
+ */
 void gc_config_dump(struct gc_config_s *cfg);
-int gc_config_parse(struct gc_config_s *cfg, const char *path);
-int packet_send(struct gc_s *gc, struct proto_s *pr);
-int parse_header(sn input, char ***argv, int *argc);
-void swap_memory(char *dst, int ndst);
 
-//void memory_append(struct mem_s *dst, const char *src, const int nsrc);
+/**
+ * @brief Parse config file.
+ *
+ * Read @p path and fill @p cfg.
+ * @param cfg Config structure
+ * @param path Path to filename
+ * @return GC_OK on success, GC_ERROR on failure
+ */
+int gc_config_parse(struct gc_config_s *cfg, const char *path);
+
+/**
+ * @brief Send packet to upstream.
+ *
+ * @param gc GC structure.
+ * @param pr Protocol message.
+ * @return GC_OK on success, GC_ERROR on failure.
+ */
+int gc_packet_send(struct gc_s *gc, struct proto_s *pr);
+
+/**
+ * @brief Parse packet header of MESSAGE_FROM type.
+ *
+ * @param input Packet header.
+ * @param argv Pointer to array of parsed elements.
+ * @param argc Number of elements in array.
+ * @return GC_OK on success, GC_ERROR on failure.
+ */
+int gc_parse_header_mf(sn input, char ***argv, int *argc);
+
+/**
+ * @brief Swap memory.
+ *
+ * @param dst Memory region pointer.
+ * @param ndst Memory region size.
+ * @return void.
+ */
+void gc_swap_memory(char *dst, int ndst);
+
+/**
+ * @brief Read file.
+ *
+ * Read file @p fname and put its output to @p dst.
+ * @param dst Pointer to memory region filled with file content.
+ * @param fname File to read.
+ * @return On failure -1, otherwise, size of memory region.
+ */
 int gc_fread(char **dst, const char *fname);
 
-inline static void timestring(char *b, const int nb)
+/**
+ * @brief Create string representation of time.
+ *
+ * @param b Buffer to fill with characters.
+ * @param nb Maximum size of buffer.
+ * @return void.
+ */
+inline static void gc_timestring(char *b, const int nb)
 {
     char            buf[128];
     time_t          s;
@@ -221,13 +297,25 @@ inline static void timestring(char *b, const int nb)
     snprintf(b, nb, "[%s.%03lld] ", buf, ms);
 }
 
-inline static int fd_close(int fd)
+/**
+ * @brief Close file descriptor.
+ *
+ * @param fd File descriptor.
+ * @return GC_OK on success, GC_ERROR, -1 and errno is set on failure.
+ */
+inline static int gc_fd_close(int fd)
 {
     if(fd > STDERR_FILENO) return close(fd);
     else                   return GC_ERROR;
 }
 
-inline static int fd_setkeepalive(int fd)
+/**
+ * @brief Set KEEPALIVE on file descriptor.
+ *
+ * @param fd File descriptor.
+ * @return GC_OK on success, GC_ERROR on failure.
+ */
+inline static int gc_fd_setkeepalive(int fd)
 {
     int optval       = 1;
     socklen_t optlen = sizeof(optval);
@@ -239,7 +327,13 @@ inline static int fd_setkeepalive(int fd)
     return GC_OK;
 }
 
-inline static int fd_setnonblock(int fd)
+/**
+ * @brief Set NONBLOCKING file descriptor.
+ *
+ * @param fd File descriptor.
+ * @return GC_OK on success, -1 and errno is set on failure.
+ */
+inline static int gc_fd_setnonblock(int fd)
 {
     int nb = 1;
     return ioctl(fd, FIONBIO, &nb);

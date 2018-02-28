@@ -1,3 +1,22 @@
+/*
+ *
+ * GrizzlyCloud library - simplified VPN alternative for IoT
+ * Copyright (C) 2016 - 2017 Filip Pancik
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 #include <gc.h>
 
 static void recv_append(struct gc_s *gc)
@@ -9,7 +28,7 @@ static void recv_append(struct gc_s *gc)
 
     if(rb->recv.target == 0 && rb->recv.len > (int)(2 * sizeof(int))) {
         rb->recv.target = *(int *)(rb->recv.buf);
-        swap_memory((void *)&rb->recv.target, sizeof(rb->recv.target));
+        gc_swap_memory((void *)&rb->recv.target, sizeof(rb->recv.target));
         rb->recv.target += 4;
 
         if(rb->recv.target <= 0) {
@@ -60,7 +79,7 @@ int async_client_ssl_shutdown(struct client_ssl_s *c)
                                    c->base.fd, c->base.date);
 
     int ret;
-    ret = fd_close(c->base.fd);
+    ret = gc_fd_close(c->base.fd);
     if(ret != GC_OK) {
         hm_log(LOG_TRACE, c->base.log, "File dscriptor %d failed to close",
                                        c->base.fd);
@@ -325,7 +344,7 @@ int async_client_ssl(struct gc_s *gc)
         return GC_ERROR;
     }
 
-    int ret = fd_setkeepalive(client->base.fd);
+    int ret = gc_fd_setkeepalive(client->base.fd);
     if(ret != GC_OK) {
         hm_log(LOG_TRACE, client->base.log, "Failed to set keepalive() on fd %d", client->base.fd);
     }
@@ -357,7 +376,7 @@ int async_client_ssl(struct gc_s *gc)
     ev_io_init(&client->base.write, async_write_ssl, client->base.fd, EV_WRITE);
     ev_io_init(&client->base.read, async_read_ssl, client->base.fd, EV_READ);
 
-    timestring(client->base.date, sizeof(client->base.date));
+    gc_timestring(client->base.date, sizeof(client->base.date));
 
     ev_io_start(client->base.loop, &client->base.read);
 
@@ -498,7 +517,7 @@ int async_client(struct conn_client_s *client)
 
     snprintf(ip, sizeof(ip), "%.*s", sn_p(client->base.net.ip));
 
-    int ret = fd_setkeepalive(client->base.fd);
+    int ret = gc_fd_setkeepalive(client->base.fd);
     if(ret != GC_OK) {
         hm_log(LOG_TRACE, client->base.log, "Failed to set keepalive() on fd %d", client->base.fd);
     }
@@ -513,7 +532,7 @@ int async_client(struct conn_client_s *client)
 
     client->base.read.data = client;
     client->base.write.data = client;
-    timestring(client->base.date, sizeof(client->base.date));
+    gc_timestring(client->base.date, sizeof(client->base.date));
 
     ev_io_start(client->base.loop, &client->base.read);
     if(connect(client->base.fd, (struct sockaddr *)&servaddr, sizeof(servaddr)) != -1

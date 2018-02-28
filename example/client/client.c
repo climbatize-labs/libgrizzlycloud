@@ -1,5 +1,7 @@
 #include <gc.h>
 
+#include <client.h>
+
 static void callback_pair(struct gc_s *gc, struct gc_device_pair_s *pair)
 {
     (void )tunnel_add(gc, pair, pair->type);
@@ -73,51 +75,7 @@ static void upstream_state_changed(struct gc_s *gc, enum gc_state_e state)
         break;
     }
 }
-/*
-int main(int argc, char **argv)
-{
-    struct gc_s gc;
 
-    memset(&gc, 0, sizeof(gc));
-
-    if(hm_log_open(&gc.log, NULL, LOG_TRACE) != GC_OK) {
-        exit(1);
-    }
-
-    if(argc != 2) {
-        hm_log(LOG_CRIT, &gc.log, "Please specify config file");
-        exit(1);
-    }
-
-    gc.config.log = &gc.log;
-    assert(gc.config.log);
-    if(gc_config_init(&gc.config, argv[1]) != GC_OK) {
-        exit(1);
-    }
-
-    if(gc_config_required(&gc.config) != GC_OK) {
-        exit(1);
-    }
-
-    gc.loop = ev_default_loop(0);
-
-    gc.state_changed  = upstream_state_changed;
-
-    gc.callback_login        = callback_login;
-    gc.callback_device_pair  = callback_pair;
-
-    gc.port = GC_DEFAULT_PORT;
-    sn_setz(gc.hostname, "localhost");
-
-    gc_init(gc.loop, &gc);
-
-    ev_run(gc.loop, 0);
-
-    gc_deinit(&gc);
-
-    return 0;
-}
-*/
 int main(int argc, char **argv)
 {
     struct gc_init_s gci;
@@ -133,6 +91,7 @@ int main(int argc, char **argv)
     gci.callback_login       = callback_login;
     gci.callback_device_pair = callback_pair;
     gci.port                 = GC_DEFAULT_PORT;
+
     sn_setz(gci.hostname, "localhost");
 
     gc = gc_init(&gci);

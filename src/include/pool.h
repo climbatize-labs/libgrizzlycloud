@@ -1,19 +1,21 @@
 /*
-   hm_base - hearthmod base library
-   Copyright (C) 2016 Filip Pancik
-
-   This program is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 3 of the License, or
-   (at your option) any later version.
-
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * GrizzlyCloud library - simplified VPN alternative for IoT
+ * Copyright (C) 2016 - 2017 Filip Pancik
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
  */
 #ifndef HMPOOL_H_
 #define HMPOOL_H_
@@ -21,35 +23,89 @@
 #define POOL_DEBUG
 #define POOL_STDLIB
 
+/**
+ * @brief Pool bucket structure.
+ *
+ * Internal pool structure.
+ */
 struct pool_bucket_s {
-    void *memory_region;
-    void *nodes;
-    struct pool_bucket_s *next;
+    void   *memory_region;      /**< Block of data. */
+    void   *nodes;              /**< Pointer to actual node structures. */
+    struct pool_bucket_s *next; /**< Next bucket in linked list. */
 };
 
+/**
+ * @brief Pool structure.
+ *
+ * Generic pool structure.
+ */
 struct hm_pool_s {
-    int size;
-    int used;
-    struct hm_log_s *log;
-    struct pool_node_s *freenode;
-    struct pool_bucket_s *buckets;
-    struct hm_pool_s *next;
+    int size;                       /**< Pool size. */
+    int used;                       /**< Used nodes. */
+    struct hm_log_s *log;           /**< Log stream. */
+    struct pool_node_s *freenode;   /**< List of free nodes. */
+    struct pool_bucket_s *buckets;  /**< List of buckets. */
+    struct hm_pool_s *next;         /**< Next pool in linked list. */
 };
 
+/**
+ * @brief Pool node structure.
+ *
+ * Internal pool structure.
+ */
 struct pool_node_s {
-    void *ptr;
-    int size;
-    int realsize;
-    int used;
-    struct hm_pool_s *pool;
-    struct pool_node_s *next;
+    void *ptr;                      /**< Node memory region. */
+    int size;                       /**< Usable size. */
+    int realsize;                   /**< Real size. */
+    int used;                       /**< Usage indicator. */
+    struct hm_pool_s *pool;         /**< Parent pool. */
+    struct pool_node_s *next;       /**< Next node in linked list. */
 };
 
+/**
+ * @brief Create new pool.
+ *
+ * @return Pool structure on success or NULL on error.
+ */
 struct hm_pool_s *hm_create_pool();
+
+/**
+ * @brief Allocate memory from pool.
+ *
+ * @param pool Pool structure.
+ * @param size Size of allocated block.
+ * @return Memory pointer on success or NULL on error.
+ */
 void *hm_palloc(struct hm_pool_s *pool, int size);
+
+/**
+ * @brief Reallocate memory from pool.
+ *
+ * It shares some similiarities with realloc().
+ *
+ * @param pool Pool structure.
+ * @param ptr Memory pointer.
+ * @param size New size.
+ * @return Memory pointer on success or NULL on error.
+ * @see realloc()
+ */
 void *hm_prealloc(struct hm_pool_s *pool, void *ptr, const int size);
-void *hm_memcpy(void *dst, const void *src, const int n, void *start);
+
+/**
+ * @brief Free memory.
+ *
+ * @param pool Pool structure.
+ * @param ptr Memory region.
+ * @return 0 on success, -1 on failure.
+ */
 int hm_pfree(struct hm_pool_s *pool, void *ptr);
+
+/**
+ * @brief Destroy pool.
+ *
+ * @param pool Pool structure.
+ * @return 0 on success, -1 on failure.
+ */
 int hm_destroy_pool(struct hm_pool_s *pool);
 
 #endif

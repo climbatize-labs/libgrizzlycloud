@@ -1,3 +1,22 @@
+/*
+ *
+ * GrizzlyCloud library - simplified VPN alternative for IoT
+ * Copyright (C) 2016 - 2017 Filip Pancik
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 #include <gc.h>
 
 int async_client_shutdown(struct conn_client_s *c)
@@ -17,7 +36,7 @@ int async_client_shutdown(struct conn_client_s *c)
                                    c->base.fd, c->base.date);
 
     int ret;
-    ret = fd_close(c->base.fd);
+    ret = gc_fd_close(c->base.fd);
     if(ret != GC_OK) {
         hm_log(LOG_TRACE, c->base.log, "File descriptor %d failed to closed",
                                        c->base.fd);
@@ -174,7 +193,7 @@ static int async_client_accept(struct conn_client_s *client)
 
     ev_io_start(client->base.loop, &client->base.read);
 
-    timestring(client->base.date, sizeof(client->base.date));
+    gc_timestring(client->base.date, sizeof(client->base.date));
 
     return GC_OK;
 }
@@ -238,12 +257,12 @@ static void server_async_client(struct ev_loop *loop, ev_io *w, int revents)
     }
 #endif
 
-    ret = fd_setnonblock(client);
+    ret = gc_fd_setnonblock(client);
     if(ret != GC_OK) {
         hm_log(LOG_TRACE, cs->log, "Failed to set noblock() on fd %d", client);
     }
 
-    ret = fd_setkeepalive(client);
+    ret = gc_fd_setkeepalive(client);
     if(ret != GC_OK) {
         hm_log(LOG_TRACE, cs->log, "Failed to set keepalive() on fd %d", client);
     }

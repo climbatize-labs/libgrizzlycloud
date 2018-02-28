@@ -1,5 +1,5 @@
 LIBS    := -lgrizzlycloud -lssl -lcrypto -lev -lm -ljson-c
-INCS    := -I../../src/include
+INCS    := -I. -I../../src/include
 LIBDIR  := -L../../
 BIN     := grizzlycloud
 
@@ -11,7 +11,7 @@ lib:
 	make -C ../../
 
 client:
-	$(CC) -g -Wall $(INCS) main.c $(LIBDIR) $(LIBS) -o $(BIN)
+	$(CC) -g -Wall $(INCS) *.c $(LIBDIR) $(LIBS) -o $(BIN)
 
 lib_clean:
 	make clean -C ../../

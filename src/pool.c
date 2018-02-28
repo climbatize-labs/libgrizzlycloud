@@ -1,31 +1,22 @@
 /*
-   hm_base -  hearthmod base library
-   Copyright (C) 2016 Filip Pancik
-
-   This program is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 3 of the License, or
-   (at your option) any later version.
-
-   This program is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
-
-   You should have received a copy of the GNU General Public License
-   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * GrizzlyCloud library - simplified VPN alternative for IoT
+ * Copyright (C) 2016 - 2017 Filip Pancik
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
  */
-/*
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <assert.h>
-#include <memory.h>
-
-#include <log.h>
-#include <pool.h>
-*/
-
 #include <gc.h>
 
 #define BUCKET_MAX     2
@@ -177,25 +168,6 @@ static int pool_create_bucket(struct hm_pool_s *pool)
     pool->buckets = b;
 
     return 0;
-}
-
-void *hm_memcpy(void *dst, const void *src, const int n, void *start)
-{
-    int diff;
-    struct pool_node_s *node;
-
-    node = get_meta(start);
-
-    diff = dst - (node->ptr + sizeof(void *));
-
-    //printf("memcpy diff %d\n", node->size);
-
-    if(n + diff > node->size) {
-        hm_log(LOG_ERR, node->pool->log, "{Pool}: illegal memcpy(), overlapping dst of %d with %d bytes", node->size, diff + n);
-        return NULL;
-    } else {
-        return memcpy(dst, src, n);
-    }
 }
 
 static struct hm_pool_s *pool_create_append(struct hm_pool_s *pool, const int size)

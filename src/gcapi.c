@@ -1,3 +1,22 @@
+/*
+ *
+ * GrizzlyCloud library - simplified VPN alternative for IoT
+ * Copyright (C) 2016 - 2017 Filip Pancik
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 #include <gc.h>
 
 //static ev_timer connect_timer;
@@ -10,7 +29,7 @@ int gc_message_from(struct gc_s *gc, struct proto_s *p)
     int argc;
     int ret;
 
-    ret = parse_header(p->u.message_from.tp, &argv, &argc);
+    ret = gc_parse_header_mf(p->u.message_from.tp, &argv, &argc);
     if(ret != GC_OK) {
         if(argv) free(argv);
         return ret;
@@ -26,12 +45,12 @@ int gc_message_from(struct gc_s *gc, struct proto_s *p)
     sn_initz(request, "tunnel_request");
 
     if(sn_cmps(type, request)) {
-        ret = endpoint_request(gc, p, argv, argc);
+        ret = gc_endpoint_request(gc, p, argv, argc);
         if(ret != GC_OK) {
             hm_log(LOG_ERR, &gc->log, "Tunnel request failed");
         }
     } else if(sn_cmps(type, response)) {
-        ret = tunnel_response(gc, p, argv, argc);
+        ret = gc_tunnel_response(gc, p, argv, argc);
         if(ret != GC_OK) {
             hm_log(LOG_ERR, &gc->log, "Tunnel reponse failed");
         }
@@ -44,12 +63,12 @@ int gc_message_from(struct gc_s *gc, struct proto_s *p)
 
 static void gc_cloud_offline(struct gc_s *gc, struct proto_s *p)
 {
-    endpoint_stop(&gc->log,
-                  p->u.offline_set.address,
-                  p->u.offline_set.cloud,
-                  p->u.offline_set.device);
+    gc_endpoint_stop(&gc->log,
+                     p->u.offline_set.address,
+                     p->u.offline_set.cloud,
+                     p->u.offline_set.device);
 
-    tunnel_stop(p->u.offline_set.address);
+    gc_tunnel_stop(p->u.offline_set.address);
 }
 
 static void callback_error(struct client_ssl_s *c, enum gcerr_e error)
@@ -89,7 +108,7 @@ static void callback_data(struct gc_s *gc, const void *buffer, const int nbuffer
             if(i < list.n) {\
                 m_var.n = *(int *)(&((list.s)[i]));\
                 /* Swap memory because of server high endian */\
-                swap_memory((void *)&m_var.n, sizeof(m_var.n));\
+                gc_swap_memory((void *)&m_var.n, sizeof(m_var.n));\
                 m_var.s = &((list.s)[i + 4]);\
                 i += sizeof(m_var.n) + m_var.n;\
             }
@@ -303,8 +322,8 @@ void gc_force_stop()
 {
     gc_config_free(&gclocal->config);
     gc_upstream_force_stop(gclocal->loop);
-    tunnel_force_stop_all();
-    endpoints_force_stop_all();
+    gc_tunnel_stop_all();
+    gc_endpoints_stop_all();
 }
 
 void gc_config_free(struct gc_config_s *cfg)
