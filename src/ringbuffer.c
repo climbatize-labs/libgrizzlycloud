@@ -1,10 +1,24 @@
+/*
+ *
+ * GrizzlyCloud library - simplified VPN alternative for IoT
+ * Copyright (C) 2016 - 2017 Filip Pancik
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 #include <gc.h>
 
-/*
- * Obtain pointer to data and its size
- *
- * Warning: this is not aligned
- */
 char *ringbuffer_send_next(struct ringbuffer_s *rb, int *size)
 {
     assert(rb);
@@ -19,11 +33,6 @@ char *ringbuffer_send_next(struct ringbuffer_s *rb, int *size)
     return (char *)(rb->send->buf + rb->send->sent);
 }
 
-/*
- * @static
- * Remove empty send buffer if it's already been sent
- *
- */
 static void ringbuffer_next(struct ringbuffer_s *rb)
 {
     struct ringbuffer_slot_s *next;
@@ -39,10 +48,6 @@ static void ringbuffer_next(struct ringbuffer_s *rb)
     }
 }
 
-/*
- * Specify how many data were actually sent
- *
- */
 void ringbuffer_send_skip(struct ringbuffer_s *rb, int offset)
 {
     assert(rb);
@@ -52,20 +57,12 @@ void ringbuffer_send_skip(struct ringbuffer_s *rb, int offset)
     ringbuffer_next(rb);
 }
 
-/*
- * Find out if there is anything to send
- *
- */
 int ringbuffer_send_is_empty(struct ringbuffer_s *rb)
 {
     assert(rb);
     return (rb->send == NULL);
 }
 
-/*
- * Wipe out entire list of send buffers
- *
- */
 void ringbuffer_send_pop_all(struct ringbuffer_s *rb)
 {
     struct ringbuffer_slot_s *r, *rdel;
@@ -78,10 +75,6 @@ void ringbuffer_send_pop_all(struct ringbuffer_s *rb)
     }
 }
 
-/*
- * Traverse list of send buffers to find out size
- *
- */
 int ringbuffer_send_size(struct ringbuffer_s *rb)
 {
     int size = 0;
@@ -94,10 +87,6 @@ int ringbuffer_send_size(struct ringbuffer_s *rb)
     return size;
 }
 
-/*
- * Add data for sending
- *
- */
 int ringbuffer_send_append(struct ringbuffer_s *rb, char *buf, const int len)
 {
     assert(rb);

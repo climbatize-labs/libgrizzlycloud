@@ -1,6 +1,29 @@
+/*
+ *
+ * GrizzlyCloud library - simplified VPN alternative for IoT
+ * Copyright (C) 2016 - 2017 Filip Pancik
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 #ifndef HMLOG_H_
 #define HMLOG_H_
 
+/**
+ * @brief Log errors.
+ *
+ */
 enum errors_e {
     LOG_EMERG = 0,
     LOG_ALERT,
@@ -13,19 +36,53 @@ enum errors_e {
     LOG_TRACE,
 };
 
+/**
+ * @brief Generic log structure.
+ *
+ */
 struct hm_log_s {
-    const char *name;
-    int fd;
-    FILE *file;
-    void *data;
-    int priority;
+    const char *name;    /**< Filename. */
+    int        fd;       /**< File descriptor. */
+    FILE       *file;    /**< File stream. */
+    void       *data;    /**< User data. */
+    int        level;    /**< Log level. */
 };
 
 #define hm_log(t, l, fmt...)\
     hm_log_impl(t, l, __FILE__, __LINE__, __FUNCTION__, fmt)
 
-int hm_log_impl(int priority, struct hm_log_s *log, const char *file, int line, const char *func, const char *fmt, ...) __attribute__ ((format (printf, 6, 7)));
-int hm_log_open(struct hm_log_s *l, const char *filename, const int priority);
+/**
+ * @brief Add log message.
+ *
+ * @param level Log level.
+ * @param log Log structure.
+ * @param file File which log attempt is called from.
+ * @param line File line which log attempt is called from.
+ * @param func Function which log attempt is called from.
+ * @param fmt Varg formatted message.
+ * @return GC_OK on success, GC_ERROR on failure.
+ */
+int hm_log_impl(int level, struct hm_log_s *log,
+                const char *file, int line, const char *func,
+                const char *fmt, ...)
+                __attribute__ ((format (printf, 6, 7)));
+
+/**
+ * @brief Initialize log.
+ *
+ * @param l Log structure.
+ * @param filename Filename.
+ * @param level Log level.
+ * @return GC_OK on success, GC_ERROR on failure.
+ */
+int hm_log_open(struct hm_log_s *l, const char *filename, const int level);
+
+/**
+ * @brief Close log.
+ *
+ * @param l Log structure.
+ * @return GC_OK on success, GC_ERROR on failure.
+ */
 int hm_log_close(struct hm_log_s *l);
 
 #endif

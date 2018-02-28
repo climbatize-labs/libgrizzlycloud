@@ -1,6 +1,25 @@
+/*
+ *
+ * GrizzlyCloud library - simplified VPN alternative for IoT
+ * Copyright (C) 2016 - 2017 Filip Pancik
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 #include <gc.h>
 
-int hm_log_impl(int priority, struct hm_log_s *log, const char *file, const int line, const char *func, const char *msg, ...)
+int hm_log_impl(int level, struct hm_log_s *log, const char *file, const int line, const char *func, const char *msg, ...)
 {
     size_t          len = 0;
     char            out[8192], buf[128];
@@ -12,14 +31,14 @@ int hm_log_impl(int priority, struct hm_log_s *log, const char *file, const int 
     assert(log);
 
     /** only display messages user asked for */
-    if(priority > log->priority) {
+    if(level > log->level) {
         return -1;
     }
 
     //if(log->fd == STDERR_FILENO)
     {
         const char *colour;
-        switch(priority) {
+        switch(level) {
             case LOG_EMERG: //< system is unusable
                 colour = "\33[1;31;41mLOG_EMERG\33[m";
                 break;
@@ -75,10 +94,10 @@ int hm_log_impl(int priority, struct hm_log_s *log, const char *file, const int 
     len += snprintf(out+len, sizeof(out)-len, ", %s:%d(%s)\n", file, line, func);
 
     ssize_t nwritten = write(log->fd, out, len);
-    return (nwritten == len) ? 0 : -1;
+    return (nwritten == len) ? GC_OK : GC_ERROR;
 }
 
-int hm_log_open(struct hm_log_s *l, const char *filename, const int priority)
+int hm_log_open(struct hm_log_s *l, const char *filename, const int level)
 {
     if(filename != NULL) {
         l->file = fopen(filename, "a");
@@ -91,7 +110,7 @@ int hm_log_open(struct hm_log_s *l, const char *filename, const int priority)
         l->fd = STDERR_FILENO;
     }
 
-    l->priority = priority;
+    l->level = level;
 
     return GC_OK;
 }
@@ -100,8 +119,8 @@ int hm_log_close(struct hm_log_s *l)
 {
     if(l->file && l->file != stderr) {
         fclose(l->file);
-        return 0;
+        return GC_OK;
     } else {
-        return -1;
+        return GC_ERROR;
     }
 }

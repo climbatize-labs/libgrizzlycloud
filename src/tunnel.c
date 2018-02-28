@@ -1,10 +1,29 @@
+/*
+ *
+ * GrizzlyCloud library - simplified VPN alternative for IoT
+ * Copyright (C) 2016 - 2017 Filip Pancik
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 #include <gc.h>
 
-static struct tunnel_s    *tunnels  = NULL;
+static struct gc_tunnel_s    *tunnels  = NULL;
 
 static struct conn_client_s *tunnel_client_find(sn port, sn fd)
 {
-    struct tunnel_s *t;
+    struct gc_tunnel_s *t;
     struct ht_s *kv;
 
     for(t = tunnels; t != NULL; t = t->next) {
@@ -22,7 +41,7 @@ static struct conn_client_s *tunnel_client_find(sn port, sn fd)
     return NULL;
 }
 
-int tunnel_response(struct gc_s *gc, struct proto_s *p, char **argv, int argc)
+int gc_tunnel_response(struct gc_s *gc, struct proto_s *p, char **argv, int argc)
 {
     if(argc != 3) {
         return GC_ERROR;
@@ -46,32 +65,11 @@ int tunnel_response(struct gc_s *gc, struct proto_s *p, char **argv, int argc)
                 p->u.message_from.body.n);
 
     return GC_OK;
-    /*
-
-    sn_bytes_new(key, p->u.message_from.from_address.n + fd.n);
-    sn_bytes_add(key, p->u.message_from.from_address);
-    sn_bytes_add(key, fd);
-
-    struct endpoint_s *ep = endpoint_find(&key);
-
-    if(!ep) {
-        sn_init(port, argv[1], strlen(argv[1]));
-        sn_init(sd,   argv[2], strlen(argv[2]));
-        int ret;
-        ret = endpoint_add(key, sd, backend_port, remote_port, &ep);
-        if(ret != GC_OK) return ret;
-    }
-
-    ep_send(ep->client,
-            p->u.message_from.body.s,
-            p->u.message_from.body.n);
-    */
-    //sn_bytes_delete(key);
 }
 
 static void client_data(struct conn_client_s *client, char *buf, const int len)
 {
-    struct tunnel_s *tunnel = client->parent->tunnel;
+    struct gc_tunnel_s *tunnel = client->parent->tunnel;
 
     assert(tunnel);
 
@@ -99,7 +97,7 @@ static void client_data(struct conn_client_s *client, char *buf, const int len)
     sn_set(m.u.message_to.body,    payload);
     sn_set(m.u.message_to.tp,      snheader);
 
-    packet_send(client->base.gc, &m);
+    gc_packet_send(client->base.gc, &m);
 }
 
 static int alloc_server(struct gc_s *gc, struct conn_server_s **c, sn port_local)
@@ -128,7 +126,7 @@ static int alloc_server(struct gc_s *gc, struct conn_server_s **c, sn port_local
     return GC_OK;
 }
 
-int tunnel_add(struct gc_s *gc, struct gc_device_pair_s *pair, sn type)
+int gc_tunnel_add(struct gc_s *gc, struct gc_device_pair_s *pair, sn type)
 {
     struct conn_server_s *c = NULL;
 
@@ -139,7 +137,7 @@ int tunnel_add(struct gc_s *gc, struct gc_device_pair_s *pair, sn type)
         if(ret != GC_OK) return ret;
     }
 
-    struct tunnel_s *t = malloc(sizeof(*t));
+    struct gc_tunnel_s *t = malloc(sizeof(*t));
     if(!t) return GC_ERROR;
 
     memset(t, 0, sizeof(*t));
@@ -161,11 +159,13 @@ int tunnel_add(struct gc_s *gc, struct gc_device_pair_s *pair, sn type)
     return GC_OK;
 }
 
-void tunnel_stop(sn pid)
+void gc_tunnel_stop(sn pid)
 {
-    struct tunnel_s *t, *prev;
+    struct gc_tunnel_s *t, *prev;
     for(t = tunnels, prev = NULL; t != NULL; prev = t, t = t->next) {
         if(sn_cmps(t->pid, pid)) {
+
+            if(t->server) async_server_shutdown(t->server);
 
             if(prev) prev->next = t->next;
             else     tunnels = t->next;
@@ -177,9 +177,9 @@ void tunnel_stop(sn pid)
     }
 }
 
-void tunnel_force_stop_all()
+void gc_tunnel_stop_all()
 {
-    struct tunnel_s *t, *del;
+    struct gc_tunnel_s *t, *del;
 
     for(t = tunnels; t != NULL; ) {
         if(t->server) async_server_shutdown(t->server);

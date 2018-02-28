@@ -1,3 +1,22 @@
+/*
+ *
+ * GrizzlyCloud library - simplified VPN alternative for IoT
+ * Copyright (C) 2016 - 2017 Filip Pancik
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 #include <gc.h>
 
 static void ev_send(struct ringbuffer_s *rb,
@@ -9,23 +28,23 @@ static void ev_send(struct ringbuffer_s *rb,
     ev_io_start(loop, write);
 }
 
-static void memory_append(struct mem_s *dst, const char *src, const int nsrc)
+static void memory_append(sn *dst, const char *src, const int nsrc)
 {
-    assert(dst->size >= nsrc + dst->n);
-    memcpy(dst->s + dst->n, src, nsrc);
-    dst->n += nsrc;
+    assert(dst->n >= nsrc + dst->offset);
+    memcpy(dst->s + dst->offset, src, nsrc);
+    dst->offset += nsrc;
 }
 
 static int net_send(struct gc_s *gc, const char *json, const int njson)
 {
     int len = njson;
-    struct mem_s m = {
-        .s = malloc(njson + 4),
-        .n = 0,
-        .size = njson + 4};
+    sn m = {
+        .s      = malloc(njson + sizeof(int)),
+        .n      = njson + sizeof(int),
+        .offset = 0};
     int tmplen = len;
 
-    swap_memory((void *)&len, sizeof(len));
+    gc_swap_memory((void *)&len, sizeof(len));
 
     memory_append(&m, (void *)&len, sizeof(len));
     memory_append(&m, json, tmplen);
@@ -38,7 +57,7 @@ static int net_send(struct gc_s *gc, const char *json, const int njson)
     return GC_OK;
 }
 
-void swap_memory(char *dst, int ndst)
+void gc_swap_memory(char *dst, int ndst)
 {
     int i, j;
 
@@ -79,7 +98,7 @@ int packet_send(struct gc_s *gc, struct proto_s *pr)
     return GC_OK;
 }
 
-int parse_header(sn input, char ***argv, int *argc)
+int gc_parse_header_mf(sn input, char ***argv, int *argc)
 {
     char *start, *tmp;
 

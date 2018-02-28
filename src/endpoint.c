@@ -1,11 +1,30 @@
+/*
+ *
+ * GrizzlyCloud library - simplified VPN alternative for IoT
+ * Copyright (C) 2016 - 2017 Filip Pancik
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 #include <gc.h>
 
-static struct endpoint_s *endpoints = NULL;
+static struct gc_endpoint_s *endpoints = NULL;
 
 static void endpoint_stop_client(struct conn_client_s *c)
 {
-    struct endpoint_s *prev = NULL;
-    struct endpoint_s *ent;
+    struct gc_endpoint_s *prev = NULL;
+    struct gc_endpoint_s *ent;
 
     assert(c);
 
@@ -40,13 +59,12 @@ static int port_allowed(struct gc_s *gc, sn backend_port)
 
 static void endpoint_recv(struct conn_client_s *client, char *buf, int len)
 {
-    struct endpoint_s *ent;
+    struct gc_endpoint_s *ent;
 
     assert(client);
 
     for(ent = endpoints; ent != NULL; ent = ent->next) {
         if(ent->client == client) {
-
 
             // Message header
             char header[64];
@@ -67,7 +85,7 @@ static void endpoint_recv(struct conn_client_s *client, char *buf, int len)
                                                 sn_p(snheader), len);
 
             assert(client->base.gc);
-            packet_send(client->base.gc, &pr);
+            gc_packet_send(client->base.gc, &pr);
 
             return;
         }
@@ -87,10 +105,10 @@ static void endpoint_error(struct conn_client_s *c, enum clerr_e error)
 }
 
 static int endpoint_add(sn key, sn remote_fd, sn backend_port,
-                        sn remote_port, sn pid, struct endpoint_s **ep,
+                        sn remote_port, sn pid, struct gc_endpoint_s **ep,
                         struct gc_s *gc)
 {
-    struct endpoint_s *ent;
+    struct gc_endpoint_s *ent;
     ent = malloc(sizeof(*ent));
     if(!ent) return GC_ERROR;
 
@@ -137,9 +155,9 @@ static int endpoint_add(sn key, sn remote_fd, sn backend_port,
     return GC_OK;
 }
 
-static struct endpoint_s *endpoint_find(sn key)
+static struct gc_endpoint_s *endpoint_find(sn key)
 {
-    struct endpoint_s *ent;
+    struct gc_endpoint_s *ent;
     for(ent = endpoints; ent != NULL; ent = ent->next) {
         if(sn_cmps(ent->key, key)) {
             return ent;
@@ -149,9 +167,9 @@ static struct endpoint_s *endpoint_find(sn key)
     return NULL;
 }
 
-void endpoints_force_stop_all()
+void gc_endpoints_stop_all()
 {
-    struct endpoint_s *ent, *del;
+    struct gc_endpoint_s *ent, *del;
 
     for(ent = endpoints; ent != NULL; ) {
         if(ent->client) {
@@ -163,7 +181,7 @@ void endpoints_force_stop_all()
     }
 }
 
-int endpoint_request(struct gc_s *gc, struct proto_s *p, char **argv, int argc)
+int gc_endpoint_request(struct gc_s *gc, struct proto_s *p, char **argv, int argc)
 {
     if(argc != 4) {
         return GC_ERROR;
@@ -183,7 +201,7 @@ int endpoint_request(struct gc_s *gc, struct proto_s *p, char **argv, int argc)
         sn_set(pr.u.message_to.tp,      snheader);
         sn_setr(pr.u.message_to.body,   "NULL", 4);
 
-        packet_send(gc, &pr);
+        gc_packet_send(gc, &pr);
 
         return GC_OK;
     }
@@ -194,7 +212,7 @@ int endpoint_request(struct gc_s *gc, struct proto_s *p, char **argv, int argc)
     sn_bytes_append(key, p->u.message_from.from_address);
     sn_bytes_append(key, fd);
 
-    struct endpoint_s *ep = endpoint_find(key);
+    struct gc_endpoint_s *ep = endpoint_find(key);
 
     if(!ep) {
         sn_initr(remote_port,  argv[3], strlen(argv[3]));
@@ -222,10 +240,10 @@ int endpoint_request(struct gc_s *gc, struct proto_s *p, char **argv, int argc)
     return GC_OK;
 }
 
-void endpoint_stop(struct hm_log_s *log, sn address, sn cloud, sn device)
+void gc_endpoint_stop(struct hm_log_s *log, sn address, sn cloud, sn device)
 {
-    struct endpoint_s *prev = NULL;
-    struct endpoint_s *ent;
+    struct gc_endpoint_s *prev = NULL;
+    struct gc_endpoint_s *ent;
 
     for(ent = endpoints; ent != NULL; prev = ent, ent = ent->next) {
         if(sn_cmps(ent->pid, address)) {
