@@ -4,7 +4,7 @@
 
 static void callback_pair(struct gc_s *gc, struct gc_device_pair_s *pair)
 {
-    (void )tunnel_add(gc, pair, pair->type);
+    (void )gc_tunnel_add(gc, pair, pair->type);
 }
 
 static void client_pair(struct gc_s *gc, struct pair_s *p)
@@ -20,7 +20,7 @@ static void client_pair(struct gc_s *gc, struct pair_s *p)
     sn_set(pr.u.device_pair.remote_port, port);
 
     int ret;
-    ret = packet_send(gc, &pr);
+    ret = gc_packet_send(gc, &pr);
     if(ret != GC_OK) CALLBACK_ERROR(&gc->log, "client_pair");
 }
 
@@ -56,7 +56,7 @@ static void client_login(struct gc_s *gc)
     sn_set(as.u.account_login.devname,  gc->config.device);
 
     int ret;
-    ret = packet_send(gc, &as);
+    ret = gc_packet_send(gc, &as);
     if(ret != GC_OK) CALLBACK_ERROR(&gc->log, "client_login");
 }
 
