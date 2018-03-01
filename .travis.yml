@@ -1,0 +1,19 @@
+language: c
+
+sudo: false
+
+addons:
+    apt:
+        sources:
+            - ubuntu-toolchain-r-test
+        packages:
+            - libjson-c-dev
+            - libev-dev
+            - libssl-dev
+
+compiler:
+    - gcc
+
+script:
+    - make
+    - make -C ./example/client
