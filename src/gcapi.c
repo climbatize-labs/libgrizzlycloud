@@ -289,8 +289,11 @@ struct gc_s *gc_init(struct gc_init_s *init)
     gc->callback_login       = init->callback_login;
     gc->callback_device_pair = init->callback_device_pair;
 
-    gc->hostname = init->hostname;
-    gc->port     = init->port;
+    if(gc_backend_init(gc, &gc->hostname) != GC_OK) {
+        return NULL;
+    }
+
+    gc->port = init->port > 0 ? init->port : GC_DEFAULT_PORT;
 
     // Initialize signals
     gc_signals(gc);

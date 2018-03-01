@@ -85,14 +85,13 @@ int main(int argc, char **argv)
         exit(1);
     }
 
+    memset(&gci, 0, sizeof(gci));
+
     gci.loop                 = ev_default_loop(0);
     gci.cfgfile              = argv[1];
     gci.state_changed        = upstream_state_changed;
     gci.callback_login       = callback_login;
     gci.callback_device_pair = callback_pair;
-    gci.port                 = GC_DEFAULT_PORT;
-
-    sn_setz(gci.hostname, "localhost");
 
     gc = gc_init(&gci);
     if(gc == NULL) {
