@@ -1,3 +1,4 @@
+
 # GrizzlyCloud library
 
 GrizzlyCloud is a simplified VPN alternative for IoT (Internet of Things). Essentially it's just a client-server architecture that forwards your local TCP port requests to appropriate recipient. GrizzlyCloud library aims to provide a cross-platform cross-architecture support.
@@ -8,6 +9,14 @@ Compiled against:
 - libev-dev 4.22
 - libjson-c-dev 0.11
 - libssl-dev 1.0.2g
+
+# Build
+
+```sh
+make
+```
+
+- [Travis Build](https://travis-ci.org/GrizzlyCloud/grizzlycloudlib) ![Travis Build Status](https://travis-ci.org/GrizzlyCloud/grizzlycloudlib.svg?branch=master)
 
 # Guide
 
