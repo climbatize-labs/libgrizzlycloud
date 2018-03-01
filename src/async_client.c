@@ -332,7 +332,6 @@ int async_client_ssl(struct gc_s *gc)
 
     hostname_to_ip(hostname, ip);
 
-
     memset(&client->servaddr, 0, sizeof(client->servaddr));
     client->servaddr.sin_family = AF_INET;
     client->servaddr.sin_addr.s_addr = inet_addr(ip);

@@ -54,6 +54,7 @@
 #include <utils.h>
 #include <proto.h>
 
+#include <backend.h>
 #include <ringbuffer.h>
 #include <hashtable.h>
 #include <async_server.h>

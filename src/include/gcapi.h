@@ -75,7 +75,6 @@ struct gc_device_pair_s {
 struct gc_init_s {
     struct ev_loop *loop;
 
-    sn hostname;
     int port;
 
     const char *cfgfile;
@@ -106,7 +105,7 @@ struct gc_s {
     void (*callback_login)(struct gc_s *gc, sn error);
     void (*callback_device_pair)(struct gc_s *gc, struct gc_device_pair_s *pair);
 
-    sn hostname;
+    snb hostname;
     int port;
 
     struct client_ssl_s client;

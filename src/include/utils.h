@@ -30,6 +30,7 @@
  * N characters starting at pointer S
  */
 
+
 /*
  * Initialize m_dst with m_src
  */
@@ -131,6 +132,12 @@
     sn_initz(m_var, buf##m_var);
 
 /*
+ * Zero initialize m_dst
+ */
+#define snb_zero(m_dst)\
+    snb m_dst = { .n = 0, .offset = 0 }
+
+/*
  * Copy m_src string to m_dst
  * Only if destination space is sufficient
  *
@@ -141,6 +148,19 @@
     if(sizeof(m_dst.s) >= m_src.n) {\
         m_dst.n = m_src.n;\
         memcpy(m_dst.s, m_src.s, m_src.n);\
+    } else { abort(); }
+
+/*
+ * Copy m_src string to m_dst
+ * Only if destination space is sufficient
+ *
+ * See struct snb_s
+ */
+#define snb_cpy_d(m_dst, m_src)\
+    m_dst->n = 0;\
+    if(sizeof(m_dst->s) >= m_src.n) {\
+        m_dst->n = m_src.n;\
+        memcpy(m_dst->s, m_src.s, m_src.n);\
     } else { abort(); }
 
 /*
