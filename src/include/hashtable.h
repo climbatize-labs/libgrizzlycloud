@@ -1,7 +1,7 @@
 /*
  *
  * GrizzlyCloud library - simplified VPN alternative for IoT
- * Copyright (C) 2016 - 2017 Filip Pancik
+ * Copyright (C) 2017 - 2018 Filip Pancik
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#ifndef HASHTABLE_H_
-#define HASHTABLE_H_
+#ifndef GC_HASHTABLE_H_
+#define GC_HASHTABLE_H_
 
 #define HT_MAX          (1<<12)
 #define HT_ALLOC        0x1

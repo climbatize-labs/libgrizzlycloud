@@ -1,6 +1,39 @@
+/*
+ *
+ * GrizzlyCloud library - simplified VPN alternative for IoT
+ * Copyright (C) 2017 - 2018 Filip Pancik
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ */
 #include <gc.h>
 
-static void parse_ping(char *buffer, int nbuffer, struct gc_backend_s *bnd)
+struct backend_s {
+    const char          *ip;
+    const char          *description;
+    int                 ping[8];
+    int                 nping;
+    int                 idx;
+    struct backend_s    *next;
+};
+
+struct backend_seed_s {
+    const char          *ip;
+    const char          *description;
+};
+
+static void parse_ping(char *buffer, int nbuffer, struct backend_s *bnd)
 {
     const char *needle = "time=";
     int offset = 0;
@@ -22,12 +55,12 @@ static void parse_ping(char *buffer, int nbuffer, struct gc_backend_s *bnd)
     }
 }
 
-static struct gc_backend_s *gc_backend_ping(struct gc_s *gcs,
-                                            struct gc_backend_seed_s *seed,
-                                            int amount)
+static struct backend_s *backend_ping(struct gc_s *gcs,
+                                      struct backend_seed_s *seed,
+                                      int amount)
 {
     int i;
-    struct gc_backend_s *gc, *head = NULL;
+    struct backend_s *gc, *head = NULL;
 
     for(i = 0; i < amount; i++) {
         char pcmd[128];
@@ -64,10 +97,10 @@ static struct gc_backend_s *gc_backend_ping(struct gc_s *gcs,
     return head;
 }
 
-static void gc_backend_dump(struct gc_s *gc, struct gc_backend_s *bnd)
+static void backend_dump(struct gc_s *gc, struct backend_s *bnd)
 {
     int i;
-    struct gc_backend_s *host;
+    struct backend_s *host;
 
     for(host = bnd; host != NULL; host = host->next) {
         hm_log(LOG_TRACE, &gc->log, "IP: [%s]", host->ip);
@@ -77,10 +110,10 @@ static void gc_backend_dump(struct gc_s *gc, struct gc_backend_s *bnd)
     }
 }
 
-static int gc_backend_choose(struct gc_backend_s *bnd)
+static int backend_choose(struct backend_s *bnd)
 {
     int i;
-    struct gc_backend_s *host;
+    struct backend_s *host;
     int lowest = 999;
     int lowest_idx = -1;
 
@@ -96,9 +129,9 @@ static int gc_backend_choose(struct gc_backend_s *bnd)
     return lowest_idx;
 }
 
-static void gc_backend_free(struct gc_backend_s *bnd)
+static void backend_free(struct backend_s *bnd)
 {
-    struct gc_backend_s *host, *del;
+    struct backend_s *host, *del;
 
     for(host = bnd; host != NULL; ) {
         del = host;
@@ -109,23 +142,23 @@ static void gc_backend_free(struct gc_backend_s *bnd)
 
 int gc_backend_init(struct gc_s *gc, snb *chosen)
 {
-    struct gc_backend_s *bnd;
-    struct gc_backend_seed_s seeds[] = {
+    struct backend_s *bnd;
+    struct backend_seed_s seeds[] = {
         { "93.185.107.138",  "cz01" },
         { "185.101.98.180",  "us01" },
         { "176.126.245.114", "uk01" }
     };
 
-    bnd = gc_backend_ping(gc, seeds, sizeof(seeds) / sizeof(seeds[0]));
+    bnd = backend_ping(gc, seeds, COUNT(seeds));
 
     if(!bnd) {
         hm_log(LOG_TRACE, &gc->log, "No backend specified");
         return GC_ERROR;
     }
 
-    gc_backend_dump(gc, bnd);
+    backend_dump(gc, bnd);
 
-    int sel_idx = gc_backend_choose(bnd);
+    int sel_idx = backend_choose(bnd);
     if(sel_idx != -1) {
         hm_log(LOG_TRACE, &gc->log, "Selected backend: [%s %s]", seeds[sel_idx].ip,
                                                                  seeds[sel_idx].description);
@@ -135,7 +168,7 @@ int gc_backend_init(struct gc_s *gc, snb *chosen)
         hm_log(LOG_TRACE, &gc->log, "No backend selected");
     }
 
-    gc_backend_free(bnd);
+    backend_free(bnd);
 
     return GC_OK;
 }

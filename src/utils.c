@@ -1,7 +1,7 @@
 /*
  *
  * GrizzlyCloud library - simplified VPN alternative for IoT
- * Copyright (C) 2016 - 2017 Filip Pancik
+ * Copyright (C) 2017 - 2018 Filip Pancik
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -19,12 +19,12 @@
  */
 #include <gc.h>
 
-static void ev_send(struct ringbuffer_s *rb,
-                           struct ev_loop *loop,
-                           struct ev_io *write,
-                           char *buf, int len)
+static void ev_send(struct gc_ringbuffer_s *rb,
+                    struct ev_loop *loop,
+                    struct ev_io *write,
+                    char *buf, int len)
 {
-    ringbuffer_send_append(rb, buf, len);
+    gc_ringbuffer_send_append(rb, buf, len);
     ev_io_start(loop, write);
 }
 
@@ -35,19 +35,19 @@ static void memory_append(sn *dst, const char *src, const int nsrc)
     dst->offset += nsrc;
 }
 
-static int net_send(struct gc_s *gc, const char *json, const int njson)
+static int net_send(struct gc_s *gc, const char *buffer, const int nbuffer)
 {
-    int len = njson;
+    int len = nbuffer;
     sn m = {
-        .s      = malloc(njson + sizeof(int)),
-        .n      = njson + sizeof(int),
+        .s      = malloc(nbuffer + sizeof(int)),
+        .n      = nbuffer + sizeof(int),
         .offset = 0};
     int tmplen = len;
 
     gc_swap_memory((void *)&len, sizeof(len));
 
     memory_append(&m, (void *)&len, sizeof(len));
-    memory_append(&m, json, tmplen);
+    memory_append(&m, buffer, tmplen);
 
     struct client_ssl_s *c = &gc->client;
     gc_ev_send(c, m.s, m.n);
@@ -74,7 +74,7 @@ void gc_ev_send(struct client_ssl_s *client, char *buf, const int len)
             &client->base.write, buf, len);
 }
 
-void gen_ev_send(struct conn_client_s *client, char *buf, const int len)
+void gc_gen_ev_send(struct conn_client_s *client, char *buf, const int len)
 {
     ev_send(&client->base.rb, client->base.loop,
             &client->base.write, buf, len);
@@ -244,7 +244,6 @@ void gc_config_dump(struct gc_config_s *cfg)
                                     cfg->tunnels[i].port,
                                     cfg->tunnels[i].port_local);
     }
-
 }
 
 void config_clean(struct gc_config_s *cfg)
@@ -269,7 +268,7 @@ int gc_fread(char **dst, const char *fname)
     lsize = ftell(pfile);
     rewind(pfile);
 
-    if(lsize > MAX_FILE_SIZE) {
+    if(lsize > GC_MAX_FILE_SIZE) {
         fclose(pfile);
         return -1;
     }
