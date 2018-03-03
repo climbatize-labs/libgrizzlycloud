@@ -1,7 +1,7 @@
 /*
  *
  * GrizzlyCloud library - simplified VPN alternative for IoT
- * Copyright (C) 2016 - 2017 Filip Pancik
+ * Copyright (C) 2017 - 2018 Filip Pancik
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,10 +17,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#ifndef UTILS_H_
-#define UTILS_H_
+#ifndef GC_UTILS_H_
+#define GC_UTILS_H_
 
-#define MAX_FILE_SIZE   (1024 * 1024)
+#define GC_MAX_FILE_SIZE   (1024 * 1024)
+
+#define COUNT(m_dst) sizeof(m_dst) / sizeof(m_dst[0])
 
 #define CALLBACK_ERROR(m_log, m_msg)\
     hm_log(LOG_EMERG, m_log, m_msg)
@@ -288,7 +290,7 @@ void gc_swap_memory(char *dst, int ndst);
  * Read file @p fname and put its output to @p dst.
  * @param dst Pointer to memory region filled with file content.
  * @param fname File to read.
- * @return On failure -1, otherwise, size of memory region.
+ * @return On failure -1, otherwise, size of read bytes.
  */
 int gc_fread(char **dst, const char *fname);
 

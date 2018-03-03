@@ -1,7 +1,7 @@
 /*
  *
  * GrizzlyCloud library - simplified VPN alternative for IoT
- * Copyright (C) 2016 - 2017 Filip Pancik
+ * Copyright (C) 2017 - 2018 Filip Pancik
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 
 static void recv_append(struct gc_s *gc)
 {
-    struct ringbuffer_s *rb;
+    struct gc_ringbuffer_s *rb;
     struct client_ssl_s *c = &gc->client;
 
     rb = &c->base.rb;
@@ -42,7 +42,7 @@ static void recv_append(struct gc_s *gc)
         memcpy(c->net_buf, rb->recv.buf, rb->recv.target);
         c->net_nbuf = rb->recv.target;
 
-        ringbuffer_recv_pop(rb);
+        gc_ringbuffer_recv_pop(rb);
 
         if(c->callback_data) {
             c->callback_data(gc, c->net_buf, c->net_nbuf);
@@ -72,7 +72,7 @@ int async_client_ssl_shutdown(struct client_ssl_s *c)
         free(c->net_buf);
     }
 
-    ringbuffer_send_pop_all(&c->base.rb);
+    gc_ringbuffer_send_pop_all(&c->base.rb);
 
     hm_log(LOG_TRACE, c->base.log, "Removing client [%.*s:%d] fd: [%d] alive since: [%s]",
                                    sn_p(c->base.net.ip), c->base.net.port,
@@ -114,10 +114,10 @@ static void async_read_ssl(struct ev_loop *loop, ev_io *w, int revents)
     */
 
     if(t > 0) {
-        ringbuffer_recv_append(&c->base.rb, t);
+        gc_ringbuffer_recv_append(&c->base.rb, t);
         /*
         FIXME: add MAX so we don't spend all memory
-        if(ringbuffer_recv_is_full(&c->rb)) {
+        if(gc_ringbuffer_recv_is_full(&c->rb)) {
         ev_io_stop(c->loop, &c->read);
         if(c->callback_error) {
         c->callback_error(c, GC_READRBFULL_ERR);
@@ -158,7 +158,7 @@ static void async_write_ssl(struct ev_loop *loop, ev_io *w, int revents)
         return;
     }
 
-    char *next = ringbuffer_send_next(&c->base.rb, &sz);
+    char *next = gc_ringbuffer_send_next(&c->base.rb, &sz);
 
     if(sz == 0) {
         ev_io_stop(loop, &c->base.write);
@@ -172,8 +172,8 @@ static void async_write_ssl(struct ev_loop *loop, ev_io *w, int revents)
     if(t == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) abort(); //goto again;
 
     if(t > 0) {
-        ringbuffer_send_skip(&c->base.rb, t);
-        if(ringbuffer_send_is_empty(&c->base.rb)) {
+        gc_ringbuffer_send_skip(&c->base.rb, t);
+        if(gc_ringbuffer_send_is_empty(&c->base.rb)) {
             ev_io_stop(loop, &c->base.write);
             if(c->terminate_cb) {
                 c->terminate_cb(c, 0);
@@ -260,7 +260,7 @@ static void end_handshake(struct client_ssl_s *c)
 
     ev_io_start(c->base.loop, &c->base.read);
 
-    if(!ringbuffer_send_is_empty(&c->base.rb)) {
+    if(!gc_ringbuffer_send_is_empty(&c->base.rb)) {
         ev_io_start(c->base.loop, &c->base.write);
     }
 
@@ -397,9 +397,9 @@ static void recv_append_client(struct conn_client_s *c)
     int sz;
     char *next;
 
-    next = ringbuffer_recv_read(&c->base.rb, &sz);
+    next = gc_ringbuffer_recv_read(&c->base.rb, &sz);
     c->callback_data(c, next, sz);
-    ringbuffer_recv_pop(&c->base.rb);
+    gc_ringbuffer_recv_pop(&c->base.rb);
 }
 
 static void async_read(struct ev_loop *loop, ev_io *w, int revents)
@@ -430,9 +430,9 @@ static void async_read(struct ev_loop *loop, ev_io *w, int revents)
     hm_log(LOG_TRACE, c->base.log, "Received %d bytes from fd %d", sz, fd);
 
     if(sz > 0) {
-        ringbuffer_recv_append(&c->base.rb, sz);
+        gc_ringbuffer_recv_append(&c->base.rb, sz);
 
-        if(ringbuffer_recv_is_full(&c->base.rb)) {
+        if(gc_ringbuffer_recv_is_full(&c->base.rb)) {
             ev_io_stop(c->base.loop, &c->base.read);
             if(c->callback_error) {
                 c->callback_error(c, CL_READRBFULL_ERR);
@@ -470,12 +470,12 @@ static void async_write(struct ev_loop *loop, ev_io *w, int revents)
 
     assert(c);
 
-    if(ringbuffer_send_is_empty(&c->base.rb)) {
+    if(gc_ringbuffer_send_is_empty(&c->base.rb)) {
         ev_io_stop(loop, &c->base.write);
         return;
     }
 
-    char *next = ringbuffer_send_next(&c->base.rb, &sz);
+    char *next = gc_ringbuffer_send_next(&c->base.rb, &sz);
 
     if(sz == 0) {
         ev_io_stop(loop, &c->base.write);
@@ -487,8 +487,8 @@ static void async_write(struct ev_loop *loop, ev_io *w, int revents)
     hm_log(LOG_TRACE, c->base.log, "%d bytes sent to fd %d", sz, fd);
 
     if(sz > 0) {
-        ringbuffer_send_skip(&c->base.rb, sz);
-        if(ringbuffer_send_is_empty(&c->base.rb)) {
+        gc_ringbuffer_send_skip(&c->base.rb, sz);
+        if(gc_ringbuffer_send_is_empty(&c->base.rb)) {
             ev_io_stop(loop, &c->base.write);
         }
     } else {

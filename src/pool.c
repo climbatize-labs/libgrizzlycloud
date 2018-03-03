@@ -1,7 +1,7 @@
 /*
  *
  * GrizzlyCloud library - simplified VPN alternative for IoT
- * Copyright (C) 2016 - 2017 Filip Pancik
+ * Copyright (C) 2017 - 2018 Filip Pancik
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,6 +23,17 @@
 #define ROUND16(dst)  (((dst) + 15) & ~15)
 
 #define get_meta(m_ptr) (*(struct pool_node_s **)((struct pool_node_s ***)(m_ptr - sizeof(void *))))
+
+/**
+ * @brief Pool bucket structure.
+ *
+ * Internal pool structure.
+ */
+struct pool_bucket_s {
+    void   *memory_region;      /**< Block of data. */
+    void   *nodes;              /**< Pointer to actual node structures. */
+    struct pool_bucket_s *next; /**< Next bucket in linked list. */
+};
 
 static int pool_create_bucket(struct hm_pool_s *pool);
 

@@ -1,7 +1,7 @@
 /*
  *
  * GrizzlyCloud library - simplified VPN alternative for IoT
- * Copyright (C) 2016 - 2017 Filip Pancik
+ * Copyright (C) 2017 - 2018 Filip Pancik
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -231,9 +231,9 @@ int gc_endpoint_request(struct gc_s *gc, struct proto_s *p, char **argv, int arg
     hm_log(LOG_TRACE, &gc->log, "Receiving header [%s/%s/%s/%s] and payload of %d bytes",
                                 argv[0], argv[1], argv[2], argv[3], p->u.message_from.body.n);
 
-    gen_ev_send(ep->client,
-            p->u.message_from.body.s,
-            p->u.message_from.body.n);
+    gc_gen_ev_send(ep->client,
+                   p->u.message_from.body.s,
+                   p->u.message_from.body.n);
 
     sn_bytes_delete(key);
 
