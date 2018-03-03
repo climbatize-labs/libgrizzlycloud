@@ -1,7 +1,7 @@
 /*
  *
  * GrizzlyCloud library - simplified VPN alternative for IoT
- * Copyright (C) 2016 - 2017 Filip Pancik
+ * Copyright (C) 2017 - 2018 Filip Pancik
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,23 +17,18 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#ifndef BACKEND_H_
-#define BACKEND_H_
+#ifndef GC_BACKEND_H_
+#define GC_BACKEND_H_
 
-struct gc_backend_s {
-    const char       *ip;
-    const char       *description;
-    int              ping[8];
-    int              nping;
-    int              idx;
-    struct gc_backend_s *next;
-};
-
-struct gc_backend_seed_s {
-    const char *ip;
-    const char *description;
-};
-
+/**
+ * @brief Initialize backend.
+ *
+ * Pick one of the available backend nodes.
+ *
+ * @param gc GC structure.
+ * @param chosen Selected backend node.
+ * @return GC_OK on success, GC_ERROR on failure
+ */
 int gc_backend_init(struct gc_s *gc, snb *chosen);
 
 #endif

@@ -1,7 +1,7 @@
 /*
  *
  * GrizzlyCloud library - simplified VPN alternative for IoT
- * Copyright (C) 2016 - 2017 Filip Pancik
+ * Copyright (C) 2017 - 2018 Filip Pancik
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#ifndef HMCLIENT_H_
-#define HMCLIENT_H_
+#ifndef GC_ASYNCSERVER_H_
+#define GC_ASYNCSERVER_H_
 
 #define DEFAULT_BACKLOG 8
 
@@ -93,7 +93,7 @@ struct client_s {
 
     int fd;
 
-    struct ringbuffer_s rb;
+    struct gc_ringbuffer_s rb;
 
     enum flags_e flags;
 
@@ -156,7 +156,7 @@ int async_client_ssl_shutdown(struct client_ssl_s *c);
 int async_client_ssl(struct gc_s *gc);
 
 void gc_ev_send(struct client_ssl_s *client, char *buf, const int len);
-void gen_ev_send(struct conn_client_s *client, char *buf, const int len);
+void gc_gen_ev_send(struct conn_client_s *client, char *buf, const int len);
 
 void async_handle_socket_errno(struct hm_log_s *l);
 

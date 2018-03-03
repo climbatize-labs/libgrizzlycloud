@@ -1,7 +1,7 @@
 /*
  *
  * GrizzlyCloud library - simplified VPN alternative for IoT
- * Copyright (C) 2016 - 2017 Filip Pancik
+ * Copyright (C) 2017 - 2018 Filip Pancik
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,8 +17,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#ifndef RINGBUFFER_H
-#define RINGBUFFER_H
+#ifndef GC_RINGBUFFER_H
+#define GC_RINGBUFFER_H
 
 #define RB_SLOT_SIZE    (32 * 1024)
 
@@ -26,11 +26,11 @@
  * @brief Ringbuffer slot specification.
  *
  */
-struct ringbuffer_slot_s {
-    void   *buf;                    /**< Actual data. */
-    int    len;                     /**< Data length. */
-    int    sent;                    /**< Amount of data already sent. */
-    struct ringbuffer_slot_s *next; /**< Next slot in linked list. */
+struct gc_ringbuffer_slot_s {
+    void   *buf;                       /**< Actual data. */
+    int    len;                        /**< Data length. */
+    int    sent;                       /**< Amount of data already sent. */
+    struct gc_ringbuffer_slot_s *next; /**< Next slot in linked list. */
 };
 
 /**
@@ -38,16 +38,16 @@ struct ringbuffer_slot_s {
  *
  * Used for both, receiving and sending data.
  */
-struct ringbuffer_s {
+struct gc_ringbuffer_s {
     struct {
-        char tmp[RB_SLOT_SIZE];     /**< Temporary buffer to receive data. */
-        void *buf;                  /**< Dynamically allocated storage built of tmp parts. */
-        int  len;                   /**< Length of storage. */
-        int  target;                /**< Target length to receive. */
+        char tmp[RB_SLOT_SIZE];        /**< Temporary buffer to receive data. */
+        void *buf;                     /**< Dynamically allocated storage built of tmp parts. */
+        int  len;                      /**< Length of storage. */
+        int  target;                   /**< Target length to receive. */
     } recv;
 
-    struct ringbuffer_slot_s *send; /**< Linked list of slot buffers to send. */
-    struct ringbuffer_slot_s *tail; /**< Pointer to last slot in linked list for fast access. */
+    struct gc_ringbuffer_slot_s *send; /**< Linked list of slot buffers to send. */
+    struct gc_ringbuffer_slot_s *tail; /**< Pointer to last slot in linked list for fast access. */
 };
 
 /**
@@ -57,7 +57,7 @@ struct ringbuffer_s {
  * @param size Size of data.
  * @return Pointer to data.
  */
-char *ringbuffer_send_next(struct ringbuffer_s *rb, int *size);
+char *gc_ringbuffer_send_next(struct gc_ringbuffer_s *rb, int *size);
 
 /**
  * @brief Mark data being already sent.
@@ -66,7 +66,7 @@ char *ringbuffer_send_next(struct ringbuffer_s *rb, int *size);
  * @param offset Number of bytes already sent.
  * @return void.
  */
-void ringbuffer_send_skip(struct ringbuffer_s *rb, int offset);
+void gc_ringbuffer_send_skip(struct gc_ringbuffer_s *rb, int offset);
 
 /**
  * @brief Check if there is anything to send.
@@ -74,7 +74,7 @@ void ringbuffer_send_skip(struct ringbuffer_s *rb, int offset);
  * @param rb Ringbuffer structure.
  * @return 1 if empty, 0 if not empty.
  */
-int ringbuffer_send_is_empty(struct ringbuffer_s *rb);
+int gc_ringbuffer_send_is_empty(struct gc_ringbuffer_s *rb);
 
 /**
  * @brief Clear send buffers.
@@ -82,7 +82,7 @@ int ringbuffer_send_is_empty(struct ringbuffer_s *rb);
  * @param rb Ringbuffer structure.
  * @return void.
  */
-void ringbuffer_send_pop_all(struct ringbuffer_s *rb);
+void gc_ringbuffer_send_pop_all(struct gc_ringbuffer_s *rb);
 
 /**
  * @brief Append data for sending.
@@ -92,7 +92,8 @@ void ringbuffer_send_pop_all(struct ringbuffer_s *rb);
  * @param len Length of data.
  * @return GC_OK on success, GC_ERROR on failure.
  */
-int ringbuffer_send_append(struct ringbuffer_s *rb, char *buf, const int len);
+int gc_ringbuffer_send_append(struct gc_ringbuffer_s *rb,
+                              char *buf, const int len);
 
 /**
  * @brief Total bytes to send.
@@ -100,7 +101,7 @@ int ringbuffer_send_append(struct ringbuffer_s *rb, char *buf, const int len);
  * @param rb Ringbuffer structure.
  * @return Number of bytes.
  */
-int ringbuffer_send_size(struct ringbuffer_s *rb);
+int gc_ringbuffer_send_size(struct gc_ringbuffer_s *rb);
 
 /**
  * @brief Append received data.
@@ -111,7 +112,7 @@ int ringbuffer_send_size(struct ringbuffer_s *rb);
  * @param len Data length.
  * @return Number of bytes.
  */
-void ringbuffer_recv_append(struct ringbuffer_s *rb, const int len);
+void gc_ringbuffer_recv_append(struct gc_ringbuffer_s *rb, const int len);
 
 /**
  * @brief Obtain received data.
@@ -120,7 +121,7 @@ void ringbuffer_recv_append(struct ringbuffer_s *rb, const int len);
  * @param size Size of received data.
  * @return Pointer to received data.
  */
-char *ringbuffer_recv_read(struct ringbuffer_s *rb, int *size);
+char *gc_ringbuffer_recv_read(struct gc_ringbuffer_s *rb, int *size);
 
 /**
  * @brief Release received data.
@@ -128,7 +129,7 @@ char *ringbuffer_recv_read(struct ringbuffer_s *rb, int *size);
  * @param rb Ringbuffer structure.
  * @return void.
  */
-void ringbuffer_recv_pop(struct ringbuffer_s *rb);
+void gc_ringbuffer_recv_pop(struct gc_ringbuffer_s *rb);
 
 /**
  * @brief Check if buffer is full.
@@ -136,6 +137,6 @@ void ringbuffer_recv_pop(struct ringbuffer_s *rb);
  * @param rb Ringbuffer structure.
  * @return 1 if full, 0 if not full.
  */
-int ringbuffer_recv_is_full(struct ringbuffer_s *rb);
+int gc_ringbuffer_recv_is_full(struct gc_ringbuffer_s *rb);
 
 #endif

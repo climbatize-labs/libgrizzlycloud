@@ -1,7 +1,7 @@
 /*
  *
  * GrizzlyCloud library - simplified VPN alternative for IoT
- * Copyright (C) 2016 - 2017 Filip Pancik
+ * Copyright (C) 2017 - 2018 Filip Pancik
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ int async_client_shutdown(struct conn_client_s *c)
 
     c->base.flags |= GC_WANT_SHUTDOWN;
 
-    ringbuffer_send_pop_all(&c->base.rb);
+    gc_ringbuffer_send_pop_all(&c->base.rb);
 
     hm_log(LOG_TRACE, c->base.log, "Removing client [%.*s:%d] fd: [%d] alive since: [%s]",
                                    sn_p(c->base.net.ip), c->base.net.port,
@@ -67,9 +67,9 @@ inline static void recv_append(struct conn_client_s *c)
 
     assert(c);
 
-    buffer = ringbuffer_recv_read(&c->base.rb, &sz);
+    buffer = gc_ringbuffer_recv_read(&c->base.rb, &sz);
     c->callback_data(c, buffer, sz);
-    ringbuffer_recv_pop(&c->base.rb);
+    gc_ringbuffer_recv_pop(&c->base.rb);
 }
 
 void async_handle_socket_errno(struct hm_log_s *l)
@@ -115,9 +115,9 @@ static void async_read(struct ev_loop *loop, ev_io *w, int revents)
     sz = recv(fd, c->base.rb.recv.tmp, RB_SLOT_SIZE, 0);
 
     if(sz > 0) {
-        ringbuffer_recv_append(&c->base.rb, sz);
+        gc_ringbuffer_recv_append(&c->base.rb, sz);
 
-        if(ringbuffer_recv_is_full(&c->base.rb)) {
+        if(gc_ringbuffer_recv_is_full(&c->base.rb)) {
             ev_io_stop(c->base.loop, &c->base.read);
             if(c->callback_error) {
                 c->callback_error(c, CL_READRBFULL_ERR);
@@ -157,12 +157,12 @@ static void async_write(struct ev_loop *loop, ev_io *w, int revents)
 
     assert(c);
 
-    if(ringbuffer_send_is_empty(&c->base.rb)) {
+    if(gc_ringbuffer_send_is_empty(&c->base.rb)) {
         ev_io_stop(loop, &c->base.write);
         return;
     }
 
-    char *next = ringbuffer_send_next(&c->base.rb, &sz);
+    char *next = gc_ringbuffer_send_next(&c->base.rb, &sz);
 
     if(sz == 0) {
         ev_io_stop(loop, &c->base.write);
@@ -171,8 +171,8 @@ static void async_write(struct ev_loop *loop, ev_io *w, int revents)
 
     sz = send(fd, next, sz, MSG_NOSIGNAL);
     if(sz > 0) {
-        ringbuffer_send_skip(&c->base.rb, sz);
-        if(ringbuffer_send_is_empty(&c->base.rb)) {
+        gc_ringbuffer_send_skip(&c->base.rb, sz);
+        if(gc_ringbuffer_send_is_empty(&c->base.rb)) {
             ev_io_stop(loop, &c->base.write);
         }
     } else {
