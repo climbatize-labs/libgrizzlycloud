@@ -1,7 +1,5 @@
 #include <gc.h>
 
-#include <client.h>
-
 static void callback_login(struct gc_s *gc, sn error)
 {
     hm_log(LOG_DEBUG, &gc->log, "Login error: [%.*s]", sn_p(error));
