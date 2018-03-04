@@ -209,6 +209,8 @@ int gc_config_parse(struct gc_config_s *cfg, const char *path)
             TUN_INT(cfg->tunnels[i].port,       "port",      t_port)
             TUN_INT(cfg->tunnels[i].port_local, "portLocal", t_port_local)
 
+            cfg->tunnels[i].pid.n = 0;
+
             cfg->ntunnels++;
         }
     }
