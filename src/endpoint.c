@@ -179,6 +179,8 @@ void gc_endpoints_stop_all()
         ent = ent->next;
         free(del);
     }
+
+    endpoints = NULL;
 }
 
 int gc_endpoint_request(struct gc_s *gc, struct proto_s *p, char **argv, int argc)
