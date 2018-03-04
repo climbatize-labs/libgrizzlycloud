@@ -61,8 +61,28 @@ static int message_from(struct gc_s *gc, struct proto_s *p)
     return GC_OK;
 }
 
+static void pair_offline(struct gc_s *gc, sn address)
+{
+    int i;
+    for(i = 0; i < gc->config.ntunnels; i++) {
+        if(sn_cmps(gc->config.tunnels[i].pid, address)) {
+            hm_log(LOG_TRACE, &gc->log, "Tunnel marking pair [cloud:device:port:port_local] [%.*s:%.*s:%d:%d] offline",
+                                      sn_p(gc->config.tunnels[i].cloud),
+                                      sn_p(gc->config.tunnels[i].device),
+                                      gc->config.tunnels[i].port,
+                                      gc->config.tunnels[i].port_local);
+            gc->config.tunnels[i].pid.n = 0;
+        }
+    }
+}
+
 static void cloud_offline(struct gc_s *gc, struct proto_s *p)
 {
+    hm_log(LOG_TRACE, &gc->log, "Cloud device offline [cloud:device:port:port_local] [%.*s:%.*s]",
+                                sn_p(p->u.offline_set.cloud),
+                                sn_p(p->u.offline_set.device));
+
+    pair_offline(gc, p->u.offline_set.address);
     gc_endpoint_stop(&gc->log,
                      p->u.offline_set.address,
                      p->u.offline_set.cloud,
@@ -75,10 +95,78 @@ static void callback_error(struct client_ssl_s *c, enum gcerr_e error)
 {
     struct gc_s *gc;
 
+    hm_log(LOG_TRACE, c->base.log, "Upstream error %d", error);
+
     gc = (struct gc_s *)c->base.gc;
     async_client_ssl_shutdown(c);
     ev_timer_again(gc->loop, &gc->connect_timer);
     (void)error;
+}
+
+static void device_pair_reply(struct gc_s *gc, struct gc_device_pair_s *pair)
+{
+    if(gc_tunnel_add(gc, pair, pair->type) != GC_OK) {
+        return;
+    }
+
+    int i;
+    for(i = 0; i < gc->config.ntunnels; i++) {
+        sn_itoa(port,       gc->config.tunnels[i].port, 8);
+        sn_itoa(port_local, gc->config.tunnels[i].port_local,  8);
+
+        if(sn_cmps(gc->config.tunnels[i].cloud, pair->cloud) &&
+           sn_cmps(gc->config.tunnels[i].device, pair->device) &&
+           sn_cmps(port, pair->port_remote) &&
+           sn_cmps(port_local, pair->port_local)) {
+
+            hm_log(LOG_TRACE, &gc->log, "Tunnel [cloud:device:port:port_local] [%.*s:%.*s:%.*s:%.*s] active",
+                                        sn_p(pair->cloud), sn_p(pair->device),
+                                        sn_p(port), sn_p(port_local));
+            snb_cpy_ds(gc->config.tunnels[i].pid, pair->pid);
+            break;
+        }
+    }
+}
+
+static void devices_pair(struct ev_loop *loop, struct ev_timer *timer, int revents)
+{
+    struct gc_s *gc = (struct gc_s *)timer->data;
+
+    assert(gc);
+
+    int i;
+    for(i = 0; i < gc->config.ntunnels; i++) {
+        if(sn_len(gc->config.tunnels[i].pid) != 0) continue;
+
+        struct proto_s pr = { .type = DEVICE_PAIR };
+        sn_set(pr.u.device_pair.cloud,       gc->config.tunnels[i].cloud);
+        sn_set(pr.u.device_pair.device,      gc->config.tunnels[i].device);
+
+        sn_itoa(port,       gc->config.tunnels[i].port, 8);
+        sn_itoa(port_local, gc->config.tunnels[i].port_local,  8);
+
+        sn_set(pr.u.device_pair.local_port,  port_local);
+        sn_set(pr.u.device_pair.remote_port, port);
+
+        int ret;
+        ret = gc_packet_send(gc, &pr);
+        if(ret != GC_OK) CALLBACK_ERROR(&gc->log, "device_pair");
+    }
+}
+
+static void client_logged(struct gc_s *gc, sn error)
+{
+    sn_initz(ok, "ok");
+    sn_initz(ok_reg, "ok_registered");
+
+    if(sn_cmps(ok, error)) {
+        ev_init(&gc->config.pair_timer, devices_pair);
+        gc->config.pair_timer.repeat = 2.0;
+        gc->config.pair_timer.data = gc;
+        ev_timer_again(gc->loop, &gc->config.pair_timer);
+    } else if(!sn_cmps(ok_reg, error)) {
+        gc_force_stop();
+    }
 }
 
 static void callback_data(struct gc_s *gc, const void *buffer, const int nbuffer)
@@ -97,6 +185,8 @@ static void callback_data(struct gc_s *gc, const void *buffer, const int nbuffer
         case ACCOUNT_LOGIN_REPLY:
             if(gc->callback.login)
                 gc->callback.login(gc, p.u.account_login_reply.error);
+
+            client_logged(gc, p.u.account_login_reply.error);
         break;
         case DEVICE_PAIR_REPLY: {
             sn_initz(ok, "ok");
@@ -122,9 +212,7 @@ static void callback_data(struct gc_s *gc, const void *buffer, const int nbuffer
                     READ(pair.port_local);
                     READ(pair.port_remote);
                     sn_set(pair.type, p.u.device_pair_reply.type);
-
-                    if(gc->callback.device_pair)
-                        gc->callback.device_pair(gc, &pair);
+                    device_pair_reply(gc, &pair);
                 }
             }
             }
@@ -283,9 +371,7 @@ struct gc_s *gc_init(struct gc_init_s *init)
     // Copy over initialization settings
     gc->loop                     = init->loop;
     gc->callback.state_changed   = init->callback.state_changed;
-
     gc->callback.login           = init->callback.login;
-    gc->callback.device_pair     = init->callback.device_pair;
 
     if(gc_backend_init(gc, &gc->hostname) != GC_OK) {
         return NULL;
@@ -314,12 +400,14 @@ struct gc_s *gc_init(struct gc_init_s *init)
 
 static void gc_upstream_force_stop(struct ev_loop *loop)
 {
+    hm_log(LOG_TRACE, &gclocal->log, "Upstream force stop");
     ev_timer_stop(loop, &gclocal->connect_timer);
     async_client_ssl_shutdown(&gclocal->client);
 }
 
 static void gc_config_free(struct gc_config_s *cfg)
 {
+    ev_timer_stop(gclocal->loop, &cfg->pair_timer);
     json_object_put(cfg->jobj);
     free(cfg->content);
 }

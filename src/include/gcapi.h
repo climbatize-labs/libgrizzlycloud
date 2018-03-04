@@ -62,10 +62,11 @@ enum gc_cfg_type_e {
  *
  */
 struct gc_config_tunnel_s {
-    sn cloud;               /**< Destination cloud. */
-    sn device;              /**< Destination device name. */
-    int port;               /**< Destination port. */
-    int port_local;         /**< Local port. */
+    sn cloud;                /**< Destination cloud. */
+    sn device;               /**< Destination device name. */
+    int port;                /**< Destination port. */
+    int port_local;          /**< Local port. */
+    snb pid;                 /**< Paired process ID. */
 };
 
 /**
@@ -79,6 +80,8 @@ struct gc_config_s {
 
     int ntunnels;                                       /**< Number of tunnels. */
     struct gc_config_tunnel_s tunnels[GC_CFG_MAX_TUNNELS];  /**< Array of tunnels. */
+
+    struct ev_timer pair_timer;                         /**< Pair timer. */
 
     int nallowed;                                       /**< Number of allowed ports. */
     int allowed[GC_CFG_MAX_ALLOW_PORTS];                /**< Array of allowed ports. */
@@ -116,7 +119,6 @@ struct gc_init_s {
     struct {
         void (*state_changed)(struct gc_s *gc, enum gc_state_e state);       /**< Upstream socket state cb. */
         void (*login)(struct gc_s *gc, sn error);                            /**< Login callback. */
-        void (*device_pair)(struct gc_s *gc, struct gc_device_pair_s *pair); /**< Device pair callback. */
     } callback;
 };
 
@@ -141,7 +143,6 @@ struct gc_s {
     struct {
         void (*state_changed)(struct gc_s *gc, enum gc_state_e state);       /**< Upstream socket state cb. */
         void (*login)(struct gc_s *gc, sn error);                            /**< Login callback. */
-        void (*device_pair)(struct gc_s *gc, struct gc_device_pair_s *pair); /**< Device pair callback. */
     } callback;
 };
 

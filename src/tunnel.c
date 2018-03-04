@@ -161,18 +161,28 @@ int gc_tunnel_add(struct gc_s *gc, struct gc_device_pair_s *pair, sn type)
 
 void gc_tunnel_stop(sn pid)
 {
-    struct gc_tunnel_s *t, *prev;
-    for(t = tunnels, prev = NULL; t != NULL; prev = t, t = t->next) {
+    struct gc_tunnel_s *t, *prev, *del;
+    for(t = tunnels, prev = NULL; t != NULL; ) {
         if(sn_cmps(t->pid, pid)) {
 
-            if(t->server) async_server_shutdown(t->server);
+            if(t->server) {
+                hm_log(LOG_TRACE, t->server->log, "Tunnel stop [cloud:device:port:port_remote] [%.*s:%.*s:%.*s:%.*s]",
+                                                  sn_p(t->cloud),
+                                                  sn_p(t->device),
+                                                  sn_p(t->port_local),
+                                                  sn_p(t->port_remote));
+                async_server_shutdown(t->server);
+            }
 
             if(prev) prev->next = t->next;
             else     tunnels = t->next;
 
-            free(t);
-
-            break;
+            del = t;
+            t = t->next;
+            free(del);
+        } else {
+            prev = t;
+            t = t->next;
         }
     }
 }

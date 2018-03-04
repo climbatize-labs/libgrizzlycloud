@@ -392,6 +392,8 @@ void async_server_shutdown(struct conn_server_s *s)
     ev_io_stop(s->loop, &s->listener);
     struct conn_client_s *c;
 
+    (void )gc_fd_close(s->fd);
+
     int i;
     for(i = 0; i < HT_MAX; i++) {
         if(!s->ht[i]) continue;
