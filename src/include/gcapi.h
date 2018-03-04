@@ -20,116 +20,148 @@
 #ifndef GC_API_H_
 #define GC_API_H_
 
-#define GC_DEFAULT_PORT    17040
-#define GC_MAX_TUNNELS     32
-#define GC_MAX_ALLOW_PORTS 32
+/**
+ * @brief Upstream port.
+ */
+#define GC_DEFAULT_PORT         17040
 
+/**
+ * @brief Maximum configured tunnels.
+ */
+#define GC_CFG_MAX_TUNNELS     32
+
+/**
+ * @brief Maximum allowed ports.
+ */
+#define GC_CFG_MAX_ALLOW_PORTS 32
+
+/**
+ * @brief GC state enum.
+ *
+ * Client's state related to upstream.
+ */
 enum gc_state_e {
-    GC_CONNECTED = 0,
-    GC_HANDSHAKE_SUCCESS,
-    GC_DISCONNECTED
+    GC_CONNECTED = 0,       /**< Connected. */
+    GC_HANDSHAKE_SUCCESS,   /**< TLS handshake. */
+    GC_DISCONNECTED         /**< Disconnected. */
 };
 
+/**
+ * @brief Configuration type.
+ *
+ * User configuration can specify any of the following.
+ */
 enum gc_cfg_type_e {
-    GC_TYPE_HYBRID,
-    GC_TYPE_SERVER,
-    GC_TYPE_CLIENT
+    GC_TYPE_HYBRID,         /**< Both server and client type. */
+    GC_TYPE_SERVER,         /**< Instance only accepts incoming connections. */
+    GC_TYPE_CLIENT          /**< Instance only establishes tunnels to other GC instances. */
 };
 
-struct config_tunnel_s {
-    sn cloud;
-    sn device;
-    int port;
-    int port_local;
+/**
+ * @brief Tunnel configuration.
+ *
+ */
+struct gc_config_tunnel_s {
+    sn cloud;               /**< Destination cloud. */
+    sn device;              /**< Destination device name. */
+    int port;               /**< Destination port. */
+    int port_local;         /**< Local port. */
 };
 
+/**
+ * @brief GC configuration.
+ *
+ */
 struct gc_config_s {
-    sn username;
-    sn password;
-    sn device;
+    sn username;                                        /**< Login username. */
+    sn password;                                        /**< Login password. */
+    sn device;                                          /**< Login device. */
 
-    int ntunnels;
-    struct config_tunnel_s tunnels[GC_MAX_TUNNELS];
+    int ntunnels;                                       /**< Number of tunnels. */
+    struct gc_config_tunnel_s tunnels[GC_CFG_MAX_TUNNELS];  /**< Array of tunnels. */
 
-    int nallowed;
-    int allowed[GC_MAX_ALLOW_PORTS];
+    int nallowed;                                       /**< Number of allowed ports. */
+    int allowed[GC_CFG_MAX_ALLOW_PORTS];                /**< Array of allowed ports. */
 
-    enum gc_cfg_type_e type;
+    enum gc_cfg_type_e type;                            /**< Type of configuration. */
 
-    char file[64];
+    char file[64];                                      /**< Configuration file. */
 
-    struct hm_log_s *log;
-    struct json_object *jobj;
-    char *content;
+    struct hm_log_s *log;                               /**< Log stream. */
+    struct json_object *jobj;                           /**< Parsed json configuration. */
+    char *content;                                      /**< Configuration buffer. */
 };
 
+/**
+ * @brief Pair device as callback reply.
+ *
+ */
 struct gc_device_pair_s {
-    sn cloud;
-    sn pid;
-    sn device;
-    sn port_local;
-    sn port_remote;
-    sn type;
+    sn cloud;                                           /**< Paired cloud. */
+    sn pid;                                             /**< Paired process ID. */
+    sn device;                                          /**< Paired device name. */
+    sn port_local;                                      /**< Local port. */
+    sn port_remote;                                     /**< Rmote port. */
+    sn type;                                            /**< If "forced" entity is being paired. */
 };
 
+/**
+ * @brief Library initialization structure.
+ *
+ */
 struct gc_init_s {
-    struct ev_loop *loop;
-
-    int port;
-
-    const char *cfgfile;
-
-    void (*state_changed)(struct gc_s *gc, enum gc_state_e state);
-
-    // callbacks
-    void (*callback_login)(struct gc_s *gc, sn error);
-    void (*callback_device_pair)(struct gc_s *gc, struct gc_device_pair_s *pair);
+    int            port;                                /**< Upstream port. */
+    struct ev_loop *loop;                               /**< Event loop. */
+    const char     *cfgfile;                            /**< Configuration file. */
+    struct {
+        void (*state_changed)(struct gc_s *gc, enum gc_state_e state);       /**< Upstream socket state cb. */
+        void (*login)(struct gc_s *gc, sn error);                            /**< Login callback. */
+        void (*device_pair)(struct gc_s *gc, struct gc_device_pair_s *pair); /**< Device pair callback. */
+    } callback;
 };
 
+/**
+ * @brief Main library strcutre.
+ *
+ */
 struct gc_s {
-    struct ev_loop   *loop;
-    struct hm_pool_s *pool;
-    struct hm_log_s  log;
-
-    struct ev_timer connect_timer;
-    struct ev_signal signal;
-
-    //void (*message_to_set_reply)(struct gc_s *gc, struct proto_s *p);
-    void (*message_from)(struct gc_s *gc, char *device, int ndevice, char *msg, int nmsg, char *type, int ntype);
-    void (*cloud_online)(struct gc_s *gc, char **clients, int nclients);
-    void (*announce)(struct gc_s *gc, char *device, int ndevice);
-    void (*offline)(struct gc_s *gc, char *device, int ndevice);
-    void (*state_changed)(struct gc_s *gc, enum gc_state_e state);
-
-    // callbacks
-    void (*callback_login)(struct gc_s *gc, sn error);
-    void (*callback_device_pair)(struct gc_s *gc, struct gc_device_pair_s *pair);
-
-    snb hostname;
-    int port;
-
-    struct client_ssl_s client;
-
-    struct gc_config_s config;
+    struct ev_loop      *loop;                          /**< Event loop. */
+    struct hm_pool_s    *pool;                          /**< Memory pool. */
+    struct hm_log_s     log;                            /**< Log structure. */
+    struct ev_timer     connect_timer;                  /**< Event timer to re-establish upstream connection. */
+    snb                 hostname;                       /**< Upstream. */
+    int                 port;                           /**< Upstream's port. */
+    struct client_ssl_s client;                         /**< Client's structure. */
+    struct gc_config_s  config;                         /**< Parsed config. */
 
     struct {
-        sn buf;
+        sn buf;                                         /**< Network buffer. */
     } net;
+
+    struct {
+        void (*state_changed)(struct gc_s *gc, enum gc_state_e state);       /**< Upstream socket state cb. */
+        void (*login)(struct gc_s *gc, sn error);                            /**< Login callback. */
+        void (*device_pair)(struct gc_s *gc, struct gc_device_pair_s *pair); /**< Device pair callback. */
+    } callback;
 };
 
 struct gc_s *gc_init(struct gc_init_s *init);
-int gc_deinit(struct gc_s *gc);
-int gc_reinit_size(struct gc_s *gc, int size);
 
+/**
+ * @brief Deinitialization call.
+ *
+ * Clean network buffer, ssl, gc structure and event loop.
+ * @return void.
+ */
+void gc_deinit(struct gc_s *gc);
+
+/**
+ * @brief Interrupt activity and clean any library related structures.
+ *
+ * Called after receiving SIGTERM.
+ * @return void.
+ */
 void gc_force_stop();
-
-extern struct ev_loop *loop;
-extern struct hm_log_s gclog;
-extern struct hm_pool_s pool;
-
-int  gc_config_init(struct gc_config_s *cfg, const char *filename);
-void gc_config_free(struct gc_config_s *cfg);
-int  gc_config_required(struct gc_config_s *cfg);
 
 extern int gc_sigterm;
 

@@ -19,11 +19,11 @@
  */
 #include <gc.h>
 
-//static ev_timer connect_timer;
-static struct gc_s *gclocal = NULL;
 int gc_sigterm = 0;
 
-int gc_message_from(struct gc_s *gc, struct proto_s *p)
+static struct gc_s *gclocal = NULL;
+
+static int message_from(struct gc_s *gc, struct proto_s *p)
 {
     char **argv;
     int argc;
@@ -61,7 +61,7 @@ int gc_message_from(struct gc_s *gc, struct proto_s *p)
     return GC_OK;
 }
 
-static void gc_cloud_offline(struct gc_s *gc, struct proto_s *p)
+static void cloud_offline(struct gc_s *gc, struct proto_s *p)
 {
     gc_endpoint_stop(&gc->log,
                      p->u.offline_set.address,
@@ -85,7 +85,7 @@ static void callback_data(struct gc_s *gc, const void *buffer, const int nbuffer
 {
     struct proto_s p;
     sn src = { .s = (char *)buffer + 4, .n = nbuffer - 4 };
-    if(deserialize(&p, &src) != 0) {
+    if(gc_deserialize(&p, &src) != 0) {
         hm_log(LOG_ERR, &gc->log, "Parsing failed");
         return;
     }
@@ -95,8 +95,8 @@ static void callback_data(struct gc_s *gc, const void *buffer, const int nbuffer
 
     switch(p.type) {
         case ACCOUNT_LOGIN_REPLY:
-            if(gc->callback_login)
-                gc->callback_login(gc, p.u.account_login_reply.error);
+            if(gc->callback.login)
+                gc->callback.login(gc, p.u.account_login_reply.error);
         break;
         case DEVICE_PAIR_REPLY: {
             sn_initz(ok, "ok");
@@ -123,18 +123,18 @@ static void callback_data(struct gc_s *gc, const void *buffer, const int nbuffer
                     READ(pair.port_remote);
                     sn_set(pair.type, p.u.device_pair_reply.type);
 
-                    if(gc->callback_device_pair)
-                        gc->callback_device_pair(gc, &pair);
+                    if(gc->callback.device_pair)
+                        gc->callback.device_pair(gc, &pair);
                 }
             }
             }
         break;
         case MESSAGE_FROM: {
-                gc_message_from(gc, &p);
+                message_from(gc, &p);
             }
         break;
         case OFFLINE_SET: {
-                gc_cloud_offline(gc, &p);
+                cloud_offline(gc, &p);
             }
         break;
         default:
@@ -165,7 +165,7 @@ static void upstream_connect(struct ev_loop *loop, struct ev_timer *timer, int r
     (void )revents;
 }
 
-int gc_deinit(struct gc_s *gc)
+void gc_deinit(struct gc_s *gc)
 {
     if(gc->net.buf.s) free(gc->net.buf.s);
 
@@ -180,8 +180,6 @@ int gc_deinit(struct gc_s *gc)
     free(gc);
 
     ev_default_destroy();
-
-    return 0;
 }
 
 static void sigh_terminate(int __attribute__ ((unused)) signo)
@@ -283,11 +281,11 @@ struct gc_s *gc_init(struct gc_init_s *init)
     }
 
     // Copy over initialization settings
-    gc->loop            = init->loop;
-    gc->state_changed   = init->state_changed;
+    gc->loop                     = init->loop;
+    gc->callback.state_changed   = init->callback.state_changed;
 
-    gc->callback_login       = init->callback_login;
-    gc->callback_device_pair = init->callback_device_pair;
+    gc->callback.login           = init->callback.login;
+    gc->callback.device_pair     = init->callback.device_pair;
 
     if(gc_backend_init(gc, &gc->hostname) != GC_OK) {
         return NULL;
@@ -317,8 +315,13 @@ struct gc_s *gc_init(struct gc_init_s *init)
 static void gc_upstream_force_stop(struct ev_loop *loop)
 {
     ev_timer_stop(loop, &gclocal->connect_timer);
-
     async_client_ssl_shutdown(&gclocal->client);
+}
+
+static void gc_config_free(struct gc_config_s *cfg)
+{
+    json_object_put(cfg->jobj);
+    free(cfg->content);
 }
 
 void gc_force_stop()
@@ -327,10 +330,4 @@ void gc_force_stop()
     gc_upstream_force_stop(gclocal->loop);
     gc_tunnel_stop_all();
     gc_endpoints_stop_all();
-}
-
-void gc_config_free(struct gc_config_s *cfg)
-{
-    json_object_put(cfg->jobj);
-    free(cfg->content);
 }

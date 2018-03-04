@@ -1,7 +1,7 @@
 /*
  *
  * GrizzlyCloud library - simplified VPN alternative for IoT
- * Copyright (C) 2017 - 2018 Filip Pancik
+ * Copyright (C) 2016 - 2017 Filip Pancik
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
     { int ret = add_intern(dst, m_bin, m_nbin);\
       if(ret != GCPROTO_OK) return ret; }
 
-void dump(struct proto_s *p)
+void gc_proto_dump(struct proto_s *p)
 {
     switch(p->type) {
     case MESSAGE_TO_SET_REPLY:
@@ -200,7 +200,6 @@ static int get_intern(sn *dst, sn *src)
     return GCPROTO_OK;
 }
 
-
 static int get_enum(sn *src, enum proto_e *value)
 {
     return get_int_intern(src, (int*)value);
@@ -211,7 +210,7 @@ static int get_int(sn *src, int *value)
     return get_int_intern(src, (int *)value);
 }
 
-int serialize(sn *dst, struct proto_s *src)
+int gc_serialize(sn *dst, struct proto_s *src)
 {
     dst->s = NULL;
     dst->n = dst->offset = 0;
@@ -353,7 +352,7 @@ int serialize(sn *dst, struct proto_s *src)
     ret = m_func;\
     if(ret != GCPROTO_OK) return ret;
 
-int deserialize(struct proto_s *dst, sn *src)
+int gc_deserialize(struct proto_s *dst, sn *src)
 {
     src->offset = 0;
 

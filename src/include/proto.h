@@ -1,6 +1,6 @@
 // This file is generated 
-#ifndef GCPROTO_H_
-#define GCPROTO_H_
+#ifndef GC_PROTO_H_
+#define GC_PROTO_H_
 
 #define GCPROTO_VERSION	1
 #define GCPROTO_OK  0
@@ -113,9 +113,9 @@ struct proto_s {
         } version_mismatch;
     } u;
 };
-int serialize(sn *dst, struct proto_s *src);
-int deserialize(struct proto_s *dst, sn *src);
-void dump(struct proto_s *p);
+int gc_serialize(sn *dst, struct proto_s *src);
+int gc_deserialize(struct proto_s *dst, sn *src);
+void gc_proto_dump(struct proto_s *p);
 
 
 #endif

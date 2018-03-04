@@ -60,7 +60,7 @@ static void client_login(struct gc_s *gc)
     if(ret != GC_OK) CALLBACK_ERROR(&gc->log, "client_login");
 }
 
-static void upstream_state_changed(struct gc_s *gc, enum gc_state_e state)
+static void callback_state_changed(struct gc_s *gc, enum gc_state_e state)
 {
     switch(state) {
         case GC_HANDSHAKE_SUCCESS: {
@@ -87,11 +87,11 @@ int main(int argc, char **argv)
 
     memset(&gci, 0, sizeof(gci));
 
-    gci.loop                 = ev_default_loop(0);
-    gci.cfgfile              = argv[1];
-    gci.state_changed        = upstream_state_changed;
-    gci.callback_login       = callback_login;
-    gci.callback_device_pair = callback_pair;
+    gci.loop                   = ev_default_loop(0);
+    gci.cfgfile                = argv[1];
+    gci.callback.state_changed = callback_state_changed;
+    gci.callback.login         = callback_login;
+    gci.callback.device_pair   = callback_pair;
 
     gc = gc_init(&gci);
     if(gc == NULL) {
