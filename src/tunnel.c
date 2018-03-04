@@ -197,4 +197,6 @@ void gc_tunnel_stop_all()
         t = t->next;
         free(del);
     }
+
+    tunnels = NULL;
 }

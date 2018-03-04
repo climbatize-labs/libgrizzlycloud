@@ -61,11 +61,13 @@ static int message_from(struct gc_s *gc, struct proto_s *p)
     return GC_OK;
 }
 
-static void pair_offline(struct gc_s *gc, sn address)
+static void pairs_offline(struct gc_s *gc, sn address)
 {
     int i;
     for(i = 0; i < gc->config.ntunnels; i++) {
-        if(sn_cmps(gc->config.tunnels[i].pid, address)) {
+        if(address.n == 0) {
+            gc->config.tunnels[i].pid.n = 0;
+        } else if(sn_cmps(gc->config.tunnels[i].pid, address)) {
             hm_log(LOG_TRACE, &gc->log, "Tunnel marking pair [cloud:device:port:port_local] [%.*s:%.*s:%d:%d] offline",
                                       sn_p(gc->config.tunnels[i].cloud),
                                       sn_p(gc->config.tunnels[i].device),
@@ -82,7 +84,7 @@ static void cloud_offline(struct gc_s *gc, struct proto_s *p)
                                 sn_p(p->u.offline_set.cloud),
                                 sn_p(p->u.offline_set.device));
 
-    pair_offline(gc, p->u.offline_set.address);
+    pairs_offline(gc, p->u.offline_set.address);
     gc_endpoint_stop(&gc->log,
                      p->u.offline_set.address,
                      p->u.offline_set.cloud,
@@ -91,16 +93,31 @@ static void cloud_offline(struct gc_s *gc, struct proto_s *p)
     gc_tunnel_stop(p->u.offline_set.address);
 }
 
+static void gc_upstream_force_stop(struct ev_loop *loop)
+{
+    hm_log(LOG_TRACE, &gclocal->log, "Upstream force stop");
+    ev_timer_stop(loop, &gclocal->connect_timer);
+    if(gclocal->client.base.active) {
+        async_client_ssl_shutdown(&gclocal->client);
+        gclocal->client.base.active = 0;
+    }
+}
+
 static void callback_error(struct client_ssl_s *c, enum gcerr_e error)
 {
-    struct gc_s *gc;
-
     hm_log(LOG_TRACE, c->base.log, "Upstream error %d", error);
 
-    gc = (struct gc_s *)c->base.gc;
-    async_client_ssl_shutdown(c);
-    ev_timer_again(gc->loop, &gc->connect_timer);
-    (void)error;
+    // Remove tunnels' pid's
+    sn_initr(empty_pid, "", 0);
+    pairs_offline(gclocal, empty_pid);
+
+    gc_tunnel_stop_all();
+    gc_endpoints_stop_all();
+    if(c->base.active) {
+        async_client_ssl_shutdown(c);
+        c->base.active = 0;
+    }
+    ev_timer_again(gclocal->loop, &gclocal->connect_timer);
 }
 
 static void device_pair_reply(struct gc_s *gc, struct gc_device_pair_s *pair)
@@ -148,6 +165,10 @@ static void devices_pair(struct ev_loop *loop, struct ev_timer *timer, int reven
         sn_set(pr.u.device_pair.local_port,  port_local);
         sn_set(pr.u.device_pair.remote_port, port);
 
+        hm_log(LOG_TRACE, &gc->log, "Attempt to pair [cloud:device:port:port_local] [%.*s:%.*s:%.*s:%.*s]",
+                                    sn_p(gc->config.tunnels[i].cloud),
+                                    sn_p(gc->config.tunnels[i].device),
+                                    sn_p(port), sn_p(port_local));
         int ret;
         ret = gc_packet_send(gc, &pr);
         if(ret != GC_OK) CALLBACK_ERROR(&gc->log, "device_pair");
@@ -275,7 +296,7 @@ static void sigh_terminate(int __attribute__ ((unused)) signo)
     if(gc_sigterm == 1) return;
 
     gc_sigterm = 1;
-    //hm_log(LOG_TRACE, &gc->log, "Received SIGTERM");
+    hm_log(LOG_TRACE, &gclocal->log, "Received SIGTERM");
     gc_force_stop();
 }
 
@@ -396,13 +417,6 @@ struct gc_s *gc_init(struct gc_init_s *init)
     ev_timer_again(gc->loop, &gc->connect_timer);
 
     return gc;
-}
-
-static void gc_upstream_force_stop(struct ev_loop *loop)
-{
-    hm_log(LOG_TRACE, &gclocal->log, "Upstream force stop");
-    ev_timer_stop(loop, &gclocal->connect_timer);
-    async_client_ssl_shutdown(&gclocal->client);
 }
 
 static void gc_config_free(struct gc_config_s *cfg)

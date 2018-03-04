@@ -325,6 +325,8 @@ int async_client_ssl(struct gc_s *gc)
     SSL *ssl;
     struct client_ssl_s *client = &gc->client;
 
+    client->base.active = 0;
+
     ctx = make_ctx();
 
     ssl = SSL_new(ctx);
@@ -389,6 +391,8 @@ int async_client_ssl(struct gc_s *gc)
     }
 
     ev_io_start(client->base.loop, &client->ev_w_connect);
+
+    client->base.active = 1;
 
     return GC_OK;
 }
