@@ -104,6 +104,8 @@ struct client_s {
 
     char date[32];
 
+    int active;
+
     struct gc_s *gc;
 };
 
