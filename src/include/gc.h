@@ -57,7 +57,7 @@
 #include <backend.h>
 #include <ringbuffer.h>
 #include <hashtable.h>
-#include <async_server.h>
+#include <async.h>
 #include <gcapi.h>
 #include <endpoint.h>
 #include <tunnel.h>

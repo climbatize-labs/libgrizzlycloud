@@ -83,7 +83,7 @@ void gc_gen_ev_send(struct conn_client_s *client, char *buf, const int len)
 int gc_packet_send(struct gc_s *gc, struct proto_s *pr)
 {
     sn dst;
-    if(serialize(&dst, pr) != GC_OK) {
+    if(gc_serialize(&dst, pr) != GC_OK) {
         hm_log(LOG_DEBUG, &gc->log, "Packet serialization failed");
         return GC_ERROR;
     }
@@ -244,12 +244,6 @@ void gc_config_dump(struct gc_config_s *cfg)
                                     cfg->tunnels[i].port,
                                     cfg->tunnels[i].port_local);
     }
-}
-
-void config_clean(struct gc_config_s *cfg)
-{
-    free(cfg->content);
-    json_object_put(cfg->jobj);
 }
 
 int gc_fread(char **dst, const char *fname)
