@@ -143,12 +143,16 @@ static void backend_free(struct backend_s *bnd)
 int gc_backend_init(struct gc_s *gc, snb *chosen)
 {
     struct backend_s *bnd;
+    /*
     struct backend_seed_s seeds[] = {
         { "93.185.107.138",  "cz01" },
         { "185.101.98.180",  "us01" },
         { "176.126.245.114", "uk01" }
     };
-
+    */
+    struct backend_seed_s seeds[] = {
+        { "localhost",  "local" },
+    };
     bnd = backend_ping(gc, seeds, COUNT(seeds));
 
     if(!bnd) {

@@ -76,6 +76,11 @@
     m_var.offset = 0;
 
 /*
+ * String length
+ */
+#define sn_len(m_var) m_var.n
+
+/*
  * Format to printf()
  */
 #define sn_p(m_var) m_var.n, m_var.s
