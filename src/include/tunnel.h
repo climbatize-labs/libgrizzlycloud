@@ -33,7 +33,7 @@ struct gc_tunnel_s {
     snb    port_remote;             /**< Remote port. */
     snb    type;                    /**< Type of tunnel. */
 
-    struct conn_server_s *server;   /**< Local TCP server related with tunnel. */
+    struct gc_gen_server_s *server;   /**< Local TCP server related with tunnel. */
 
     struct gc_tunnel_s *next;       /**< Pointer to next tunnel in a linked list. */
 };

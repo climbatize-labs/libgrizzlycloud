@@ -21,7 +21,7 @@
 
 static struct gc_endpoint_s *endpoints = NULL;
 
-static void endpoint_stop_client(struct conn_client_s *c)
+static void endpoint_stop_client(struct gc_gen_client_s *c)
 {
     struct gc_endpoint_s *prev = NULL;
     struct gc_endpoint_s *ent;
@@ -57,7 +57,7 @@ static int port_allowed(struct gc_s *gc, sn backend_port)
     return GC_ERROR;
 }
 
-static void endpoint_recv(struct conn_client_s *client, char *buf, int len)
+static void endpoint_recv(struct gc_gen_client_s *client, char *buf, int len)
 {
     struct gc_endpoint_s *ent;
 
@@ -96,7 +96,7 @@ static void endpoint_recv(struct conn_client_s *client, char *buf, int len)
     abort();
 }
 
-static void endpoint_error(struct conn_client_s *c, enum clerr_e error)
+static void endpoint_error(struct gc_gen_client_s *c, enum gcerr_e error)
 {
     hm_log(LOG_TRACE, c->base.log, "Client error %d on fd %d, endpoint %p",
                                    error, c->base.fd, c);
@@ -119,7 +119,7 @@ static int endpoint_add(sn key, sn remote_fd, sn backend_port,
 
     *ep = ent;
 
-    struct conn_client_s *client = malloc(sizeof(*client));
+    struct gc_gen_client_s *client = malloc(sizeof(*client));
     if(!client) return GC_ERROR;
 
     memset(client, 0, sizeof(*client));
@@ -140,8 +140,8 @@ static int endpoint_add(sn key, sn remote_fd, sn backend_port,
     snb_cpy_ds(client->base.net.ip, ip);
 
     client->base.net.port  = bp;
-    client->callback_data  = endpoint_recv;
-    client->callback_error = endpoint_error;
+    client->callback.data  = endpoint_recv;
+    client->callback.error = endpoint_error;
 
     client->base.gc = gc;
 

@@ -17,149 +17,204 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  */
-#ifndef GC_ASYNCSERVER_H_
-#define GC_ASYNCSERVER_H_
+#ifndef GC_ASYNC_H_
+#define GC_ASYNC_H_
 
-#define DEFAULT_BACKLOG 8
+#define GC_DEFAULT_BACKLOG  8
 
-enum flags_e {
-    GC_WANT_SHUTDOWN = (1 << 0),
-    GC_HANDSHAKED    = (1 << 1),
+/**
+ * @brief Client flags.
+ *
+ */
+enum gcflags_e {
+    GC_WANT_SHUTDOWN = (1 << 0),    /**< Client's marked for shutdown. */
+    GC_HANDSHAKED    = (1 << 1),    /**< Client already TLS handshaked. */
 };
 
-enum clerr_e {
-    CL_NOERROR = 1,
-    CL_HANGTIMEOUT_ERR,
-    CL_WANTSHUTDOWN_ERR,
-    CL_READRBFULL_ERR,
-    CL_READZERO_ERR,
-    CL_READ_ERR,
-    CL_WRITE_ERR,
-    CL_BUFFERFULL_ERR,
-    CL_PACKETLEN_ERR,
-    CL_PACKETEXPECT_ERR,
-    CL_SERVERSHUTDOWN_ERR,
-    CL_SOCKET_ERR
-};
-
+/**
+ * @brief Socket related errors.
+ *
+ */
 enum gcerr_e {
-    GC_NOERROR,
-    GC_HANGTIMEOUT_ERR,
-    GC_WANTSHUTDOWN_ERR,
-    GC_READRBFULL_ERR,
-    GC_READZERO_ERR,
-    GC_READ_ERR,
-    GC_WRITE_ERR,
-    GC_BUFFERFULL_ERR,
-    GC_PACKETLEN_ERR,
-    GC_PACKETEXPECT_ERR,
-    GC_SERVERSHUTDOWN_ERR,
-    GC_SOCKET_ERR,
-    GC_PONG_ERR,
+    GC_NOERROR,             /**< No error. */
+    GC_WANTSHUTDOWN_ERR,    /**< Socket wants to shut down. */
+    GC_READRBFULL_ERR,      /**< Read buffer is full. */
+    GC_READZERO_ERR,        /**< End of file read. */
+    GC_READ_ERR,            /**< Error reading from socket. */
+    GC_WRITE_ERR,           /**< Error writing to socket. */
+    GC_PACKETEXPECT_ERR,    /**< Packet length unexpected. */
+    GC_SOCKET_ERR,          /**< Generic socket error. */
 };
 
-struct client_ssl_s;
-struct gc_tunnel_s *tunnel;
-struct conn_client_s;
+struct gc_gen_client_s;
 
-struct conn_server_s {
-    struct ev_loop *loop;
-    struct hm_pool_s *pool;
-    struct hm_log_s *log;
+/**
+ * @brief Generic server structure.
+ *
+ */
+struct gc_gen_server_s {
+    struct ev_loop     *loop;         /**< Event loop. */
+    struct hm_pool_s   *pool;         /**< Memory pool. */
+    struct hm_log_s    *log;          /**< Log structure. */
 
-    struct gc_tunnel_s *tunnel;
+    struct ev_io       listener;      /**< Incomming connections listener. */
+    int                fd;            /**< File descriptor. */
 
-    struct ev_io listener;
-    int fd;
+    const char         *host;         /**< Listening hostname. */
+    const char         *port;         /**< Listening port. */
 
-    const char *host;
-    const char *port;
+    struct ht_s        **clients;     /**< Hashtable of clients. */
 
-    struct ht_s **ht;
+    struct gc_s        *gc;           /**< GC generic structure. */
 
-    void (*callback_data)(struct conn_client_s *data, char *buf, const int len);
-    void (*shutdown)();
+    struct gc_tunnel_s *tunnel;       /**< Parent tunnel. */
 
-    struct gc_s *gc;
+    struct {
+        void (*data)(struct gc_gen_client_s *data, char *buf, const int len);
+    } callback;
 };
 
-struct client_s {
-    struct ev_loop *loop;
-    struct hm_pool_s *pool;
-    struct hm_log_s *log;
+/**
+ * @brief Client template structure.
+ *
+ */
+struct gc_client_s {
+    struct ev_loop         *loop;       /**< Event loop. */
+    struct hm_pool_s       *pool;       /**< Memory pool. */
+    struct hm_log_s        *log;        /**< Log structure. */
 
-    struct ev_io read;
-    struct ev_io write;
+    struct ev_io           read;        /**< Socket read event. */
+    struct ev_io           write;       /**< Socket write event. */
+    int                    fd;          /**< File descriptor. */
 
-    int fd;
+    struct gc_ringbuffer_s rb;          /**< Ringbuffer for both read and write. */
 
-    struct gc_ringbuffer_s rb;
-
-    enum flags_e flags;
+    enum gcflags_e         flags;       /**< Client flags. */
 
     struct {
         snb ip;
         int port;
     } net;
 
-    char date[32];
+    char                   date[32];    /**< Alive since date. */
 
-    int active;
+    int                    active;      /**< Client shutdown or still active. */
 
-    struct gc_s *gc;
+    struct gc_s            *gc;         /**< GC strucutre. */
 };
 
-struct conn_client_s {
-    struct client_s base;
+struct gc_gen_client_s {
+    struct gc_client_s     base;        /**< Client template structure. */
 
-    char net_buf[RB_SLOT_SIZE];
-    int net_nbuf;
-    int net_expect;
+    struct gc_gen_server_s *parent;     /**< Server parent structure. */
 
-    void (*callback_data)(struct conn_client_s *client, char *buf, int len);
-    void (*callback_error)(struct conn_client_s *client, enum clerr_e error);
-
-    struct conn_server_s *parent;
-    struct conn_client_holder_s *holder;
+    struct {
+        void (*data)(struct gc_gen_client_s *client, char *buf, int len);
+        void (*error)(struct gc_gen_client_s *client, enum gcerr_e error);
+    } callback;
 };
 
-struct client_ssl_s {
-    struct client_s base;
-    struct ev_timer ping, pong;
+struct gc_gen_client_ssl_s {
+    struct gc_client_s base;            /**< Client template structure. */
 
-    struct sockaddr_in servaddr;
+    struct sockaddr_in servaddr;        /**< Address structure. */
 
-    char *net_buf;
-    int net_nbuf;
-    int net_expect;
+    SSL                *ssl;            /**< SSL lib. */
+    SSL_CTX            *ctx;            /**< SSL lib context; Что за черт? */
 
-    SSL *ssl;
-    SSL_CTX *ctx;
+    struct ev_io       ev_w_connect;    /**< Connect event. */
+    struct ev_io       ev_r_handshake;  /**< Handshake read event. */
+    struct ev_io       ev_w_handshake;  /**< Handshake write event. */
 
-    struct ev_io ev_w_connect;
-    struct ev_io ev_r_handshake;
-    struct ev_io ev_w_handshake;
+    struct {
+        char *buf;
+        int n;
+        int expect;
+    } net;
 
-    void (*callback_data)(struct gc_s *gc, const void *buffer, const int nbuffer);
-    void (*callback_error)(struct client_ssl_s *client, enum gcerr_e error);
-
-    void (*terminate_cb)(struct client_ssl_s *client, int error);
-
-    void (*connected)(struct client_ssl_s *client);
+    struct {
+        void (*data)(struct gc_s *gc, const void *buffer, const int nbuffer);
+        void (*error)(struct gc_gen_client_ssl_s *client, enum gcerr_e error);
+        void (*terminate)(struct gc_gen_client_ssl_s *client, int error);
+        void (*connected)(struct gc_gen_client_ssl_s *client);
+    } callback;
 };
 
-int async_server(struct conn_server_s *cs, struct gc_s *gc);
-void async_server_shutdown(struct conn_server_s *cs);
+/**
+ * @brief Initialize generic server.
+ *
+ * @param cs Generic server structure.
+ * @param gc GC structure.
+ * @return GC_OK on success, GC_ERROR on failure.
+ */
+int async_server(struct gc_gen_server_s *cs, struct gc_s *gc);
 
-int async_client(struct conn_client_s *client);
-int async_client_shutdown(struct conn_client_s *c);
+/**
+ * @brief Shutdown generic server.
+ *
+ * @param cs Generic server structure.
+ * @return void.
+ */
+void async_server_shutdown(struct gc_gen_server_s *cs);
 
-int async_client_ssl_shutdown(struct client_ssl_s *c);
+/**
+ * @brief Initialize generic client.
+ *
+ * @param cs Generic client structure.
+ * @return GC_OK on success, GC_ERROR on failure.
+ */
+int async_client(struct gc_gen_client_s *client);
+
+/**
+ * @brief Shutdown generic client.
+ *
+ * @param c Generic client structure.
+ * @return void.
+ */
+void async_client_shutdown(struct gc_gen_client_s *c);
+
+/**
+ * @brief Initialize generic ssl client.
+ *
+ * @param gc GC structure.
+ * @return GC_OK on success, GC_ERROR on failure.
+ */
 int async_client_ssl(struct gc_s *gc);
 
-void gc_ev_send(struct client_ssl_s *client, char *buf, const int len);
-void gc_gen_ev_send(struct conn_client_s *client, char *buf, const int len);
+/**
+ * @brief Shutdown generic ssl client.
+ *
+ * @param c Generic ssl client structure.
+ * @return void.
+ */
+void async_client_ssl_shutdown(struct gc_gen_client_ssl_s *c);
 
+/**
+ * @brief Shutdown generic ssl client.
+ *
+ * @param c Generic ssl client structure.
+ * @return void.
+ */
 void async_handle_socket_errno(struct hm_log_s *l);
+
+/**
+ * @brief Send encrypted data to upstream.
+ *
+ * @param client Generic ssl client.
+ * @param buf Data to send.
+ * @param len Length of data.
+ * @return void.
+ */
+void gc_ssl_ev_send(struct gc_gen_client_ssl_s *client, char *buf, const int len);
+
+/**
+ * @brief Send unencrypted data to endpoint or tunnel.
+ *
+ * @param client Generic client.
+ * @param buf Data to send.
+ * @param len Length of data.
+ * @return void.
+ */
+void gc_gen_ev_send(struct gc_gen_client_s *client, char *buf, const int len);
 
 #endif
