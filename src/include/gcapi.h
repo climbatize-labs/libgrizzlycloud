@@ -133,7 +133,7 @@ struct gc_s {
     struct ev_timer     connect_timer;                  /**< Event timer to re-establish upstream connection. */
     snb                 hostname;                       /**< Upstream. */
     int                 port;                           /**< Upstream's port. */
-    struct client_ssl_s client;                         /**< Client's structure. */
+    struct gc_gen_client_ssl_s client;                  /**< Client's structure. */
     struct gc_config_s  config;                         /**< Parsed config. */
 
     struct {

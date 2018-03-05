@@ -31,7 +31,7 @@ struct gc_endpoint_s {
     snb backend_port;               /**< Backend port. */
     snb pid;                        /**< Process ID association. */
 
-    struct conn_client_s *client;   /**< TCP client. */
+    struct gc_gen_client_s *client;   /**< TCP client. */
 
     struct gc_endpoint_s *next;     /**< Next endpoint in linked list. */
 };
