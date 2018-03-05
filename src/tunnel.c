@@ -21,7 +21,7 @@
 
 static struct gc_tunnel_s    *tunnels  = NULL;
 
-static struct conn_client_s *tunnel_client_find(sn port, sn fd)
+static struct gc_gen_client_s *tunnel_client_find(sn port, sn fd)
 {
     struct gc_tunnel_s *t;
     struct ht_s *kv;
@@ -31,11 +31,11 @@ static struct conn_client_s *tunnel_client_find(sn port, sn fd)
 
         char key[16];
         snprintf(key, sizeof(key), "%.*s", sn_p(fd));
-        kv = ht_get(t->server->ht, key, strlen(key));
+        kv = ht_get(t->server->clients, key, strlen(key));
 
         if(!kv) continue;
 
-        return (struct conn_client_s *)kv->s;
+        return (struct gc_gen_client_s *)kv->s;
     }
 
     return NULL;
@@ -54,7 +54,7 @@ int gc_tunnel_response(struct gc_s *gc, struct proto_s *p, char **argv, int argc
                                 sn_p(port),
                                 sn_p(fd));
 
-    struct conn_client_s *client = tunnel_client_find(port, fd);
+    struct gc_gen_client_s *client = tunnel_client_find(port, fd);
     if(!client) {
         hm_log(LOG_TRACE, &gc->log, "Tunnel client not found");
         return GC_ERROR;
@@ -67,7 +67,7 @@ int gc_tunnel_response(struct gc_s *gc, struct proto_s *p, char **argv, int argc
     return GC_OK;
 }
 
-static void client_data(struct conn_client_s *client, char *buf, const int len)
+static void client_data(struct gc_gen_client_s *client, char *buf, const int len)
 {
     struct gc_tunnel_s *tunnel = client->parent->tunnel;
 
@@ -100,7 +100,7 @@ static void client_data(struct conn_client_s *client, char *buf, const int len)
     gc_packet_send(client->base.gc, &m);
 }
 
-static int alloc_server(struct gc_s *gc, struct conn_server_s **c, sn port_local)
+static int alloc_server(struct gc_s *gc, struct gc_gen_server_s **c, sn port_local)
 {
     *c = malloc(sizeof(**c));
     if(!*c) return GC_ERROR;
@@ -110,7 +110,7 @@ static int alloc_server(struct gc_s *gc, struct conn_server_s **c, sn port_local
     (*c)->loop = gc->loop;
     (*c)->log  = &gc->log;
     (*c)->pool = NULL;
-    (*c)->callback_data = client_data;
+    (*c)->callback.data = client_data;
     (*c)->host = "0.0.0.0";
 
     sn_to_char(port, port_local, 32);
@@ -128,7 +128,7 @@ static int alloc_server(struct gc_s *gc, struct conn_server_s **c, sn port_local
 
 int gc_tunnel_add(struct gc_s *gc, struct gc_device_pair_s *pair, sn type)
 {
-    struct conn_server_s *c = NULL;
+    struct gc_gen_server_s *c = NULL;
 
     sn_initz(forced, "forced");
     if(!sn_cmps(type, forced)) {
