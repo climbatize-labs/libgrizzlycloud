@@ -22,7 +22,7 @@
 static void recv_append(struct gc_s *gc)
 {
     struct gc_ringbuffer_s *rb;
-    struct client_ssl_s *c = &gc->client;
+    struct gc_gen_client_ssl_s *c = &gc->client;
 
     rb = &c->base.rb;
 
@@ -32,25 +32,25 @@ static void recv_append(struct gc_s *gc)
         rb->recv.target += 4;
 
         if(rb->recv.target <= 0) {
-            c->callback_error(c, GC_PACKETEXPECT_ERR);
+            c->callback.error(c, GC_PACKETEXPECT_ERR);
             return;
         }
     }
 
     if(rb->recv.target != 0 && rb->recv.target <= rb->recv.len) {
-        c->net_buf = realloc(c->net_buf, rb->recv.target);
-        memcpy(c->net_buf, rb->recv.buf, rb->recv.target);
-        c->net_nbuf = rb->recv.target;
+        c->net.buf = realloc(c->net.buf, rb->recv.target);
+        memcpy(c->net.buf, rb->recv.buf, rb->recv.target);
+        c->net.n = rb->recv.target;
 
         gc_ringbuffer_recv_pop(rb);
 
-        if(c->callback_data) {
-            c->callback_data(gc, c->net_buf, c->net_nbuf);
+        if(c->callback.data) {
+            c->callback.data(gc, c->net.buf, c->net.n);
         }
     }
 }
 
-int async_client_ssl_shutdown(struct client_ssl_s *c)
+void async_client_ssl_shutdown(struct gc_gen_client_ssl_s *c)
 {
     assert(c);
 
@@ -60,16 +60,13 @@ int async_client_ssl_shutdown(struct client_ssl_s *c)
     ev_io_stop(c->base.loop, &c->ev_w_handshake);
     ev_io_stop(c->base.loop, &c->ev_w_connect);
 
-    ev_timer_stop(c->base.loop, &c->ping);
-    ev_timer_stop(c->base.loop, &c->pong);
-
     c->base.flags |= GC_WANT_SHUTDOWN;
 
     if(c->ssl) SSL_free(c->ssl);
     if(c->ctx) SSL_CTX_free(c->ctx);
 
-    if(c->net_buf) {
-        free(c->net_buf);
+    if(c->net.buf) {
+        free(c->net.buf);
     }
 
     gc_ringbuffer_send_pop_all(&c->base.rb);
@@ -84,8 +81,6 @@ int async_client_ssl_shutdown(struct client_ssl_s *c)
         hm_log(LOG_TRACE, c->base.log, "File dscriptor %d failed to close",
                                        c->base.fd);
     }
-
-    return GC_OK;
 }
 
 static void async_read_ssl(struct ev_loop *loop, ev_io *w, int revents)
@@ -93,15 +88,15 @@ static void async_read_ssl(struct ev_loop *loop, ev_io *w, int revents)
     (void) revents;
     int t = 0;
     struct gc_s *gc = (struct gc_s *)w->data;
-    struct client_ssl_s *c = &gc->client;
+    struct gc_gen_client_ssl_s *c = &gc->client;
 
     (void)revents;
 
     if(gc_sigterm == 1) return;
 
     if(EQFLAG(c->base.flags, GC_WANT_SHUTDOWN)) {
-        if(c->callback_error) {
-            c->callback_error(c, GC_WANTSHUTDOWN_ERR);
+        if(c->callback.error) {
+            c->callback.error(c, GC_WANTSHUTDOWN_ERR);
         }
         return;
     }
@@ -130,13 +125,13 @@ static void async_read_ssl(struct ev_loop *loop, ev_io *w, int revents)
 
     } else if(t == 0) {
         async_handle_socket_errno(c->base.log);
-        if(c->callback_error) {
-            c->callback_error(c, GC_READZERO_ERR);
+        if(c->callback.error) {
+            c->callback.error(c, GC_READZERO_ERR);
         }
     } else {
         async_handle_socket_errno(c->base.log);
-        if(c->callback_error) {
-            c->callback_error(c, GC_READ_ERR);
+        if(c->callback.error) {
+            c->callback.error(c, GC_READ_ERR);
         }
     }
 }
@@ -146,14 +141,14 @@ static void async_write_ssl(struct ev_loop *loop, ev_io *w, int revents)
     (void)revents;
     int t;
     struct gc_s *gc = (struct gc_s *)w->data;
-    struct client_ssl_s *c = &gc->client;
+    struct gc_gen_client_ssl_s *c = &gc->client;
     int sz;
 
     if(gc_sigterm == 1) return;
 
     if(EQFLAG(c->base.flags, GC_WANT_SHUTDOWN)) {
-        if(c->callback_error) {
-            c->callback_error(c, GC_WANTSHUTDOWN_ERR);
+        if(c->callback.error) {
+            c->callback.error(c, GC_WANTSHUTDOWN_ERR);
         }
         return;
     }
@@ -175,19 +170,19 @@ static void async_write_ssl(struct ev_loop *loop, ev_io *w, int revents)
         gc_ringbuffer_send_skip(&c->base.rb, t);
         if(gc_ringbuffer_send_is_empty(&c->base.rb)) {
             ev_io_stop(loop, &c->base.write);
-            if(c->terminate_cb) {
-                c->terminate_cb(c, 0);
-                c->terminate_cb = NULL;
+            if(c->callback.terminate) {
+                c->callback.terminate(c, 0);
+                c->callback.terminate = NULL;
             }
         }
     } else {
-        if(c->terminate_cb) {
-            c->terminate_cb(c, GC_WRITE_ERR);
-            c->terminate_cb = NULL;
+        if(c->callback.terminate) {
+            c->callback.terminate(c, GC_WRITE_ERR);
+            c->callback.terminate = NULL;
         } else {
             async_handle_socket_errno(c->base.log);
-            if(c->callback_error) {
-                c->callback_error(c, GC_WRITE_ERR);
+            if(c->callback.error) {
+                c->callback.error(c, GC_WRITE_ERR);
             }
         }
     }
@@ -213,7 +208,7 @@ SSL_CTX *make_ctx()
 
 static void start_handshake(struct gc_s *gc, int err)
 {
-    struct client_ssl_s *c = &gc->client;
+    struct gc_gen_client_ssl_s *c = &gc->client;
     ev_io_stop(c->base.loop, &c->base.read);
     ev_io_stop(c->base.loop, &c->base.write);
 
@@ -231,7 +226,7 @@ static void handle_connect(struct ev_loop *loop, ev_io *w, int revents)
     (void) revents;
     int t;
     struct gc_s *gc = (struct gc_s *)w->data;
-    struct client_ssl_s *c = &gc->client;
+    struct gc_gen_client_ssl_s *c = &gc->client;
     t = connect(c->base.fd, (struct sockaddr *)&(c->servaddr), sizeof(c->servaddr));
     if(!t || errno == EISCONN || !errno) {
         ev_io_stop(loop, &c->ev_w_connect);
@@ -246,7 +241,7 @@ static void handle_connect(struct ev_loop *loop, ev_io *w, int revents)
     }
 }
 
-static void end_handshake(struct client_ssl_s *c)
+static void end_handshake(struct gc_gen_client_ssl_s *c)
 {
     ev_io_stop(c->base.loop, &c->ev_r_handshake);
     ev_io_stop(c->base.loop, &c->ev_w_handshake);
@@ -275,7 +270,7 @@ static void client_handshake(struct ev_loop *loop, ev_io *w, int revents)
     (void) revents;
     int t;
     struct gc_s *gc = (struct gc_s *)w->data;
-    struct client_ssl_s *c = &gc->client;
+    struct gc_gen_client_ssl_s *c = &gc->client;
 
     t = SSL_do_handshake(c->ssl);
     if(t == 1) {
@@ -323,7 +318,7 @@ int async_client_ssl(struct gc_s *gc)
     char ip[32];
     SSL_CTX *ctx;
     SSL *ssl;
-    struct client_ssl_s *client = &gc->client;
+    struct gc_gen_client_ssl_s *client = &gc->client;
 
     client->base.active = 0;
 
@@ -397,13 +392,13 @@ int async_client_ssl(struct gc_s *gc)
     return GC_OK;
 }
 
-static void recv_append_client(struct conn_client_s *c)
+static void recv_append_client(struct gc_gen_client_s *c)
 {
     int sz;
     char *next;
 
     next = gc_ringbuffer_recv_read(&c->base.rb, &sz);
-    c->callback_data(c, next, sz);
+    c->callback.data(c, next, sz);
     gc_ringbuffer_recv_pop(&c->base.rb);
 }
 
@@ -411,20 +406,20 @@ static void async_read(struct ev_loop *loop, ev_io *w, int revents)
 {
     (void) revents;
     int sz;
-    struct conn_client_s *c;
+    struct gc_gen_client_s *c;
     int fd;
 
     if(gc_sigterm == 1) return;
 
     assert(w);
-    c = (struct conn_client_s *)w->data;
+    c = (struct gc_gen_client_s *)w->data;
     fd = w->fd;
 
     assert(c);
 
     if(EQFLAG(c->base.flags, GC_WANT_SHUTDOWN)) {
-        if(c->callback_error) {
-            c->callback_error(c, CL_WANTSHUTDOWN_ERR);
+        if(c->callback.error) {
+            c->callback.error(c, GC_WANTSHUTDOWN_ERR);
         }
 
         return;
@@ -439,8 +434,8 @@ static void async_read(struct ev_loop *loop, ev_io *w, int revents)
 
         if(gc_ringbuffer_recv_is_full(&c->base.rb)) {
             ev_io_stop(c->base.loop, &c->base.read);
-            if(c->callback_error) {
-                c->callback_error(c, CL_READRBFULL_ERR);
+            if(c->callback.error) {
+                c->callback.error(c, GC_READRBFULL_ERR);
             }
             return;
         }
@@ -449,13 +444,13 @@ static void async_read(struct ev_loop *loop, ev_io *w, int revents)
 
     } else if(sz == 0) {
         async_handle_socket_errno(c->base.log);
-        if(c->callback_error) {
-            c->callback_error(c, CL_READZERO_ERR);
+        if(c->callback.error) {
+            c->callback.error(c, GC_READZERO_ERR);
         }
     } else {
         async_handle_socket_errno(c->base.log);
-        if(c->callback_error) {
-            c->callback_error(c, CL_READ_ERR);
+        if(c->callback.error) {
+            c->callback.error(c, GC_READ_ERR);
         }
     }
 }
@@ -463,14 +458,14 @@ static void async_read(struct ev_loop *loop, ev_io *w, int revents)
 static void async_write(struct ev_loop *loop, ev_io *w, int revents)
 {
     (void)revents;
-    struct conn_client_s *c;
+    struct gc_gen_client_s *c;
     int fd;
     int sz;
 
     if(gc_sigterm == 1) return;
 
     assert(w);
-    c = (struct conn_client_s *)w->data;
+    c = (struct gc_gen_client_s *)w->data;
     fd = w->fd;
 
     assert(c);
@@ -499,13 +494,13 @@ static void async_write(struct ev_loop *loop, ev_io *w, int revents)
     } else {
         async_handle_socket_errno(c->base.log);
         ev_io_stop(loop, &c->base.write);
-        if(c->callback_error) {
-            c->callback_error(c, CL_WRITE_ERR);
+        if(c->callback.error) {
+            c->callback.error(c, GC_WRITE_ERR);
         }
     }
 }
 
-int async_client(struct conn_client_s *client)
+int async_client(struct gc_gen_client_s *client)
 {
     struct sockaddr_in servaddr;
     char ip[32];
@@ -515,7 +510,7 @@ int async_client(struct conn_client_s *client)
     client->base.fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
     if(client->base.fd == -1) {
         hm_log(LOG_ERR, client->base.log, "{Connector}: client init socket error: %d", errno);
-        client->callback_error(client, CL_SOCKET_ERR);
+        client->callback.error(client, GC_SOCKET_ERR);
         return GC_ERROR;
     }
 
@@ -543,8 +538,8 @@ int async_client(struct conn_client_s *client)
        && errno != EINPROGRESS) {
         async_client_shutdown(client);
         hm_log(LOG_ERR, client->base.log, "{Connector}: connect() errno: %d", errno);
-        return -1;
+        return GC_ERROR;
     }
 
-    return 0;
+    return GC_OK;
 }
