@@ -103,7 +103,7 @@ static void gc_upstream_force_stop(struct ev_loop *loop)
     }
 }
 
-static void callback_error(struct client_ssl_s *c, enum gcerr_e error)
+static void callback_error(struct gc_gen_client_ssl_s *c, enum gcerr_e error)
 {
     hm_log(LOG_TRACE, c->base.log, "Upstream error %d", error);
 
@@ -267,8 +267,8 @@ static void upstream_connect(struct ev_loop *loop, struct ev_timer *timer, int r
     gc->client.base.net.port = gc->port;
     snb_cpy_ds(gc->client.base.net.ip, gc->hostname);
 
-    gc->client.callback_data  = callback_data;
-    gc->client.callback_error = callback_error;
+    gc->client.callback.data  = callback_data;
+    gc->client.callback.error = callback_error;
 
     async_client_ssl(gc);
     (void )revents;

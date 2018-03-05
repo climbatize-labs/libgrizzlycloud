@@ -49,8 +49,8 @@ static int net_send(struct gc_s *gc, const char *buffer, const int nbuffer)
     memory_append(&m, (void *)&len, sizeof(len));
     memory_append(&m, buffer, tmplen);
 
-    struct client_ssl_s *c = &gc->client;
-    gc_ev_send(c, m.s, m.n);
+    struct gc_gen_client_ssl_s *c = &gc->client;
+    gc_ssl_ev_send(c, m.s, m.n);
 
     free(m.s);
 
@@ -68,13 +68,13 @@ void gc_swap_memory(char *dst, int ndst)
     }
 }
 
-void gc_ev_send(struct client_ssl_s *client, char *buf, const int len)
+void gc_ssl_ev_send(struct gc_gen_client_ssl_s *client, char *buf, const int len)
 {
     ev_send(&client->base.rb, client->base.loop,
             &client->base.write, buf, len);
 }
 
-void gc_gen_ev_send(struct conn_client_s *client, char *buf, const int len)
+void gc_gen_ev_send(struct gc_gen_client_s *client, char *buf, const int len)
 {
     ev_send(&client->base.rb, client->base.loop,
             &client->base.write, buf, len);
