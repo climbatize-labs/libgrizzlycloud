@@ -128,6 +128,10 @@ static void async_read_ssl(struct ev_loop *loop, ev_io *w, int revents)
         if(c->callback.error) {
             c->callback.error(c, GC_READZERO_ERR);
         }
+     } else if(t == -1 &&
+        (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) {
+        hm_log(LOG_TRACE, c->base.log, "Socket read EAGAIN|EWOULDBLOCK|EINTR");
+        async_handle_socket_errno(c->base.log);
     } else {
         async_handle_socket_errno(c->base.log);
         if(c->callback.error) {
@@ -447,6 +451,10 @@ static void async_read(struct ev_loop *loop, ev_io *w, int revents)
         if(c->callback.error) {
             c->callback.error(c, GC_READZERO_ERR);
         }
+     } else if(sz == -1 &&
+        (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) {
+        hm_log(LOG_TRACE, c->base.log, "Socket read EAGAIN|EWOULDBLOCK|EINTR");
+        async_handle_socket_errno(c->base.log);
     } else {
         async_handle_socket_errno(c->base.log);
         if(c->callback.error) {
