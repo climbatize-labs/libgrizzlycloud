@@ -98,7 +98,7 @@ int gc_packet_send(struct gc_s *gc, struct proto_s *pr)
     return GC_OK;
 }
 
-int gc_parse_header_mf(sn input, char ***argv, int *argc)
+int gc_parse_delimiter(sn input, char ***argv, int *argc, char delimiter)
 {
     char *start, *tmp;
 
@@ -110,7 +110,7 @@ int gc_parse_header_mf(sn input, char ***argv, int *argc)
     for(start = tmp = input.s, *argc = 0, *argv = NULL;
         tmp < (input.s + input.n);
         tmp++) {
-        if(*tmp == '/') {
+        if(*tmp == delimiter) {
             ASET
             start = tmp + 1;
             *tmp = '\0'; // replace / with zero to terminate str
