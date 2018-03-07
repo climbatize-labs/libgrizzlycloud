@@ -170,6 +170,7 @@ int gc_backend_init(struct gc_s *gc, snb *chosen)
         snb_cpy_d(chosen, ip);
     } else {
         hm_log(LOG_TRACE, &gc->log, "No backend selected");
+        return GC_ERROR;
     }
 
     backend_free(bnd);
