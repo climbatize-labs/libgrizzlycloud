@@ -73,7 +73,7 @@ inline static void recv_append(struct gc_gen_client_s *c)
 void async_handle_socket_errno(struct hm_log_s *l)
 {
     if(errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
-        hm_log(LOG_ERR, l, "Socket errno %d", errno);
+        hm_log(LOG_TRACE, l, "Socket errno %d", errno);
         return;
     }
 
@@ -131,6 +131,10 @@ static void async_read(struct ev_loop *loop, ev_io *w, int revents)
         if(c->callback.error) {
             c->callback.error(c, GC_READZERO_ERR);
         }
+     } else if(sz == -1 &&
+        (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) {
+        hm_log(LOG_TRACE, c->base.log, "Socket read EAGAIN|EWOULDBLOCK|EINTR");
+        async_handle_socket_errno(c->base.log);
     } else {
         ev_io_stop(c->base.loop, &c->base.read);
         async_handle_socket_errno(c->base.log);
