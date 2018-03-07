@@ -29,7 +29,7 @@ static int message_from(struct gc_s *gc, struct proto_s *p)
     int argc;
     int ret;
 
-    ret = gc_parse_header_mf(p->u.message_from.tp, &argv, &argc);
+    ret = gc_parse_delimiter(p->u.message_from.tp, &argv, &argc, '/');
     if(ret != GC_OK) {
         if(argv) free(argv);
         return ret;
@@ -281,6 +281,8 @@ void gc_deinit(struct gc_s *gc)
 {
     if(gc->net.buf.s) free(gc->net.buf.s);
 
+    hm_log_close(&gc->log);
+
     FIPS_mode_set(0);
     ENGINE_cleanup();
     CONF_modules_unload(1);
@@ -351,7 +353,7 @@ static int config_required(struct gc_config_s *cfg)
     assert(cfg);
 
     if(cfg->username.n == 0 || cfg->password.n == 0 || cfg->device.n == 0) {
-        hm_log(LOG_CRIT, cfg->log, "Username, password nad device must be set");
+        hm_log(LOG_CRIT, cfg->log, "Username, password and device must be set");
         return GC_ERROR;
     }
 
@@ -377,7 +379,7 @@ struct gc_s *gc_init(struct gc_init_s *init)
     gc = gclocal = malloc(sizeof(*gc));
     memset(gc, 0, sizeof(*gc));
 
-    if(hm_log_open(&gc->log, NULL, LOG_TRACE) != GC_OK) {
+    if(hm_log_open(&gc->log, init->logfile, LOG_TRACE) != GC_OK) {
         return NULL;
     }
 

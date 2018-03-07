@@ -271,14 +271,15 @@ int gc_config_parse(struct gc_config_s *cfg, const char *path);
 int gc_packet_send(struct gc_s *gc, struct proto_s *pr);
 
 /**
- * @brief Parse packet header of MESSAGE_FROM type.
+ * @brief Parse buffer by delimiter.
  *
- * @param input Packet header.
+ * @param input Buffer.
  * @param argv Pointer to array of parsed elements.
  * @param argc Number of elements in array.
+ * @param delimiter Delimiter.
  * @return GC_OK on success, GC_ERROR on failure.
  */
-int gc_parse_header_mf(sn input, char ***argv, int *argc);
+int gc_parse_delimiter(sn input, char ***argv, int *argc, char delimiter);
 
 /**
  * @brief Swap memory.
