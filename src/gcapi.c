@@ -111,6 +111,9 @@ static void callback_error(struct gc_gen_client_ssl_s *c, enum gcerr_e error)
     sn_initr(empty_pid, "", 0);
     pairs_offline(gclocal, empty_pid);
 
+    // Stop pair timer
+    ev_timer_stop(gclocal->loop, &gclocal->config.pair_timer);
+
     gc_tunnel_stop_all();
     gc_endpoints_stop_all();
     if(c->base.active) {
