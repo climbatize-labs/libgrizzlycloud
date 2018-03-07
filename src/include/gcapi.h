@@ -116,6 +116,7 @@ struct gc_init_s {
     int            port;                                /**< Upstream port. */
     struct ev_loop *loop;                               /**< Event loop. */
     const char     *cfgfile;                            /**< Configuration file. */
+    const char     *logfile;                            /**< Log file. */
     struct {
         void (*state_changed)(struct gc_s *gc, enum gc_state_e state);       /**< Upstream socket state cb. */
         void (*login)(struct gc_s *gc, sn error);                            /**< Login callback. */
