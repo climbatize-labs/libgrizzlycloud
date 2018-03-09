@@ -113,7 +113,7 @@ struct proto_s {
         } version_mismatch;
     } u;
 };
-int gc_serialize(sn *dst, struct proto_s *src);
+int gc_serialize(struct hm_pool_s *pool, sn *dst, struct proto_s *src);
 int gc_deserialize(struct proto_s *dst, sn *src);
 void gc_proto_dump(struct proto_s *p);
 
