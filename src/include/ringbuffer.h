@@ -62,11 +62,13 @@ char *gc_ringbuffer_send_next(struct gc_ringbuffer_s *rb, int *size);
 /**
  * @brief Mark data being already sent.
  *
+ * @param pool Memory pool.
  * @param rb Ringbuffer structure.
  * @param offset Number of bytes already sent.
  * @return void.
  */
-void gc_ringbuffer_send_skip(struct gc_ringbuffer_s *rb, int offset);
+void gc_ringbuffer_send_skip(struct hm_pool_s *pool, struct gc_ringbuffer_s *rb,
+                             int offset);
 
 /**
  * @brief Check if there is anything to send.
@@ -79,20 +81,23 @@ int gc_ringbuffer_send_is_empty(struct gc_ringbuffer_s *rb);
 /**
  * @brief Clear send buffers.
  *
+ * @param pool Memory pool.
  * @param rb Ringbuffer structure.
  * @return void.
  */
-void gc_ringbuffer_send_pop_all(struct gc_ringbuffer_s *rb);
+void gc_ringbuffer_send_pop_all(struct hm_pool_s *pool, struct gc_ringbuffer_s *rb);
 
 /**
  * @brief Append data for sending.
  *
+ * @param pool Memory pool.
  * @param rb Ringbuffer structure.
  * @param buf Data pointer.
  * @param len Length of data.
  * @return GC_OK on success, GC_ERROR on failure.
  */
-int gc_ringbuffer_send_append(struct gc_ringbuffer_s *rb,
+int gc_ringbuffer_send_append(struct hm_pool_s *pool,
+                              struct gc_ringbuffer_s *rb,
                               char *buf, const int len);
 
 /**
@@ -108,11 +113,13 @@ int gc_ringbuffer_send_size(struct gc_ringbuffer_s *rb);
  *
  * Take data from temporary buffer and copy them to storage.
  *
+ * @param pool Memory pool.
  * @param rb Ringbuffer structure.
  * @param len Data length.
  * @return Number of bytes.
  */
-void gc_ringbuffer_recv_append(struct gc_ringbuffer_s *rb, const int len);
+void gc_ringbuffer_recv_append(struct hm_pool_s *pool, struct gc_ringbuffer_s *rb,
+                               const int len);
 
 /**
  * @brief Obtain received data.
@@ -126,10 +133,11 @@ char *gc_ringbuffer_recv_read(struct gc_ringbuffer_s *rb, int *size);
 /**
  * @brief Release received data.
  *
+ * @param pool Memory pool.
  * @param rb Ringbuffer structure.
  * @return void.
  */
-void gc_ringbuffer_recv_pop(struct gc_ringbuffer_s *rb);
+void gc_ringbuffer_recv_pop(struct hm_pool_s *pool, struct gc_ringbuffer_s *rb);
 
 /**
  * @brief Check if buffer is full.

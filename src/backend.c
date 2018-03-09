@@ -80,7 +80,7 @@ static struct backend_s *backend_ping(struct gc_s *gcs,
 
         pclose(t);
 
-        gc = malloc(sizeof(*gc));
+        gc = hm_palloc(gcs->pool, sizeof(*gc));
         if(!gc) return NULL;
 
         memset(gc, 0, sizeof(*gc));
@@ -129,14 +129,14 @@ static int backend_choose(struct backend_s *bnd)
     return lowest_idx;
 }
 
-static void backend_free(struct backend_s *bnd)
+static void backend_free(struct hm_pool_s *pool, struct backend_s *bnd)
 {
     struct backend_s *host, *del;
 
     for(host = bnd; host != NULL; ) {
         del = host;
         host = host->next;
-        free(del);
+        hm_pfree(pool, del);
     }
 }
 
@@ -173,7 +173,7 @@ int gc_backend_init(struct gc_s *gc, snb *chosen)
         return GC_ERROR;
     }
 
-    backend_free(bnd);
+    backend_free(gc->pool, bnd);
 
     return GC_OK;
 }

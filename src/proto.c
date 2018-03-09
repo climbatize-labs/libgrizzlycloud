@@ -20,12 +20,12 @@
 // This file is generated
 #include <gc.h>
 
-#define add_uint(m_uint)\
-    { int ret = add_int_intern(dst, m_uint);\
+#define add_uint(m_pool, m_uint)\
+    { int ret = add_int_intern(m_pool, dst, m_uint);\
       if(ret != GCPROTO_OK) return ret; }
 
-#define add_bin(m_bin, m_nbin)\
-    { int ret = add_intern(dst, m_bin, m_nbin);\
+#define add_bin(m_pool, m_bin, m_nbin)\
+    { int ret = add_intern(m_pool, dst, m_bin, m_nbin);\
       if(ret != GCPROTO_OK) return ret; }
 
 void gc_proto_dump(struct proto_s *p)
@@ -132,7 +132,7 @@ void gc_proto_dump(struct proto_s *p)
     }
 }
 
-static int add_intern(sn *dst, const void *src, const int nsrc)
+static int add_intern(struct hm_pool_s *pool, sn *dst, const void *src, const int nsrc)
 {
     assert(dst);
 
@@ -140,7 +140,7 @@ static int add_intern(sn *dst, const void *src, const int nsrc)
     int offset_1 = dst->n + sizeof(nsrc);
 
     dst->n += nsrc + sizeof(nsrc);
-    dst->s  = realloc(dst->s, dst->n);
+    dst->s  = hm_prealloc(pool, dst->s, dst->n);
 
     assert(dst->s);
 
@@ -151,14 +151,14 @@ static int add_intern(sn *dst, const void *src, const int nsrc)
     return GCPROTO_OK;
 }
 
-static int add_int_intern(sn *dst, int v)
+static int add_int_intern(struct hm_pool_s *pool, sn *dst, int v)
 {
     assert(dst);
 
     int offset_0 = dst->n;
 
     dst->n += sizeof(v);
-    dst->s  = realloc(dst->s, dst->n);
+    dst->s  = hm_prealloc(pool, dst->s, dst->n);
 
     assert(dst->s);
 
@@ -210,13 +210,13 @@ static int get_int(sn *src, int *value)
     return get_int_intern(src, (int *)value);
 }
 
-int gc_serialize(sn *dst, struct proto_s *src)
+int gc_serialize(struct hm_pool_s *pool, sn *dst, struct proto_s *src)
 {
     dst->s = NULL;
     dst->n = dst->offset = 0;
 
-    add_uint(GCPROTO_VERSION);
-    add_uint(src->type);
+    add_uint(pool, GCPROTO_VERSION);
+    add_uint(pool, src->type);
 
     switch(src->type) {
         case MESSAGE_TO_SET_REPLY:
@@ -226,14 +226,14 @@ int gc_serialize(sn *dst, struct proto_s *src)
                 (sn_memcmp("login", 5, src->u.message_to_set_reply.error.s, src->u.message_to_set_reply.error.n) == 0) ||
                 (sn_memcmp("enoexists", 9, src->u.message_to_set_reply.error.s, src->u.message_to_set_reply.error.n) == 0) ||
                 (sn_memcmp("general_failure", 15, src->u.message_to_set_reply.error.s, src->u.message_to_set_reply.error.n) == 0)                 ) {
-                    add_intern(dst, src->u.message_to_set_reply.error.s, src->u.message_to_set_reply.error.n);
+                    add_intern(pool, dst, src->u.message_to_set_reply.error.s, src->u.message_to_set_reply.error.n);
                 } else { return -1; }
             break;
         case MESSAGE_TO:
-            add_intern(dst, src->u.message_to.to.s, src->u.message_to.to.n);
-            add_intern(dst, src->u.message_to.address.s, src->u.message_to.address.n);
-            add_intern(dst, src->u.message_to.tp.s, src->u.message_to.tp.n);
-            add_intern(dst, src->u.message_to.body.s, src->u.message_to.body.n);
+            add_intern(pool, dst, src->u.message_to.to.s, src->u.message_to.to.n);
+            add_intern(pool, dst, src->u.message_to.address.s, src->u.message_to.address.n);
+            add_intern(pool, dst, src->u.message_to.tp.s, src->u.message_to.tp.n);
+            add_intern(pool, dst, src->u.message_to.body.s, src->u.message_to.body.n);
             break;
         case ACCOUNT_LIST:
             break;
@@ -241,16 +241,16 @@ int gc_serialize(sn *dst, struct proto_s *src)
             if(
                 (sn_memcmp("ok", 2, src->u.account_list_reply.error.s, src->u.account_list_reply.error.n) == 0) ||
                 (sn_memcmp("general_failure", 15, src->u.account_list_reply.error.s, src->u.account_list_reply.error.n) == 0)                 ) {
-                    add_intern(dst, src->u.account_list_reply.error.s, src->u.account_list_reply.error.n);
+                    add_intern(pool, dst, src->u.account_list_reply.error.s, src->u.account_list_reply.error.n);
                 } else { return -1; }
-            add_intern(dst, src->u.account_list_reply.list.s, src->u.account_list_reply.list.n);
+            add_intern(pool, dst, src->u.account_list_reply.list.s, src->u.account_list_reply.list.n);
             break;
         case TRAFFIC_MI:
             break;
         case TRAFFIC_GET:
             break;
         case TRAFFIC_GET_REPLY:
-            add_intern(dst, src->u.traffic_get_reply.list.s, src->u.traffic_get_reply.list.n);
+            add_intern(pool, dst, src->u.traffic_get_reply.list.s, src->u.traffic_get_reply.list.n);
             if(
                 (sn_memcmp("ok", 2, src->u.traffic_get_reply.error.s, src->u.traffic_get_reply.error.n) == 0) ||
                 (sn_memcmp("ok_partial", 10, src->u.traffic_get_reply.error.s, src->u.traffic_get_reply.error.n) == 0) ||
@@ -258,42 +258,42 @@ int gc_serialize(sn *dst, struct proto_s *src)
                 (sn_memcmp("general_failure", 15, src->u.traffic_get_reply.error.s, src->u.traffic_get_reply.error.n) == 0) ||
                 (sn_memcmp("denied", 6, src->u.traffic_get_reply.error.s, src->u.traffic_get_reply.error.n) == 0) ||
                 (sn_memcmp("empty", 5, src->u.traffic_get_reply.error.s, src->u.traffic_get_reply.error.n) == 0)                 ) {
-                    add_intern(dst, src->u.traffic_get_reply.error.s, src->u.traffic_get_reply.error.n);
+                    add_intern(pool, dst, src->u.traffic_get_reply.error.s, src->u.traffic_get_reply.error.n);
                 } else { return -1; }
             break;
         case MESSAGE_FROM:
-            add_intern(dst, src->u.message_from.from_cloud.s, src->u.message_from.from_cloud.n);
-            add_intern(dst, src->u.message_from.from_device.s, src->u.message_from.from_device.n);
-            add_intern(dst, src->u.message_from.from_address.s, src->u.message_from.from_address.n);
-            add_intern(dst, src->u.message_from.tp.s, src->u.message_from.tp.n);
-            add_intern(dst, src->u.message_from.body.s, src->u.message_from.body.n);
+            add_intern(pool, dst, src->u.message_from.from_cloud.s, src->u.message_from.from_cloud.n);
+            add_intern(pool, dst, src->u.message_from.from_device.s, src->u.message_from.from_device.n);
+            add_intern(pool, dst, src->u.message_from.from_address.s, src->u.message_from.from_address.n);
+            add_intern(pool, dst, src->u.message_from.tp.s, src->u.message_from.tp.n);
+            add_intern(pool, dst, src->u.message_from.body.s, src->u.message_from.body.n);
             break;
         case DEVICE_PAIR:
-            add_intern(dst, src->u.device_pair.cloud.s, src->u.device_pair.cloud.n);
-            add_intern(dst, src->u.device_pair.device.s, src->u.device_pair.device.n);
-            add_intern(dst, src->u.device_pair.local_port.s, src->u.device_pair.local_port.n);
-            add_intern(dst, src->u.device_pair.remote_port.s, src->u.device_pair.remote_port.n);
+            add_intern(pool, dst, src->u.device_pair.cloud.s, src->u.device_pair.cloud.n);
+            add_intern(pool, dst, src->u.device_pair.device.s, src->u.device_pair.device.n);
+            add_intern(pool, dst, src->u.device_pair.local_port.s, src->u.device_pair.local_port.n);
+            add_intern(pool, dst, src->u.device_pair.remote_port.s, src->u.device_pair.remote_port.n);
             break;
         case DEVICE_PAIR_REPLY:
-            add_intern(dst, src->u.device_pair_reply.cloud.s, src->u.device_pair_reply.cloud.n);
+            add_intern(pool, dst, src->u.device_pair_reply.cloud.s, src->u.device_pair_reply.cloud.n);
             if(
                 (sn_memcmp("ok", 2, src->u.device_pair_reply.error.s, src->u.device_pair_reply.error.n) == 0) ||
                 (sn_memcmp("ok_registered", 13, src->u.device_pair_reply.error.s, src->u.device_pair_reply.error.n) == 0) ||
                 (sn_memcmp("login", 5, src->u.device_pair_reply.error.s, src->u.device_pair_reply.error.n) == 0) ||
                 (sn_memcmp("general_failure", 15, src->u.device_pair_reply.error.s, src->u.device_pair_reply.error.n) == 0)                 ) {
-                    add_intern(dst, src->u.device_pair_reply.error.s, src->u.device_pair_reply.error.n);
+                    add_intern(pool, dst, src->u.device_pair_reply.error.s, src->u.device_pair_reply.error.n);
                 } else { return -1; }
-            add_intern(dst, src->u.device_pair_reply.list.s, src->u.device_pair_reply.list.n);
-            add_intern(dst, src->u.device_pair_reply.type.s, src->u.device_pair_reply.type.n);
+            add_intern(pool, dst, src->u.device_pair_reply.list.s, src->u.device_pair_reply.list.n);
+            add_intern(pool, dst, src->u.device_pair_reply.type.s, src->u.device_pair_reply.type.n);
             break;
         case OFFLINE_SET:
-            add_intern(dst, src->u.offline_set.address.s, src->u.offline_set.address.n);
-            add_intern(dst, src->u.offline_set.cloud.s, src->u.offline_set.cloud.n);
-            add_intern(dst, src->u.offline_set.device.s, src->u.offline_set.device.n);
+            add_intern(pool, dst, src->u.offline_set.address.s, src->u.offline_set.address.n);
+            add_intern(pool, dst, src->u.offline_set.cloud.s, src->u.offline_set.cloud.n);
+            add_intern(pool, dst, src->u.offline_set.device.s, src->u.offline_set.device.n);
             break;
         case ACCOUNT_SET:
-            add_intern(dst, src->u.account_set.email.s, src->u.account_set.email.n);
-            add_intern(dst, src->u.account_set.password.s, src->u.account_set.password.n);
+            add_intern(pool, dst, src->u.account_set.email.s, src->u.account_set.email.n);
+            add_intern(pool, dst, src->u.account_set.password.s, src->u.account_set.password.n);
             break;
         case ACCOUNT_SET_REPLY:
             if(
@@ -301,15 +301,15 @@ int gc_serialize(sn *dst, struct proto_s *src)
                 (sn_memcmp("try_again", 9, src->u.account_set_reply.error.s, src->u.account_set_reply.error.n) == 0) ||
                 (sn_memcmp("already_exists", 14, src->u.account_set_reply.error.s, src->u.account_set_reply.error.n) == 0) ||
                 (sn_memcmp("general_failure", 15, src->u.account_set_reply.error.s, src->u.account_set_reply.error.n) == 0)                 ) {
-                    add_intern(dst, src->u.account_set_reply.error.s, src->u.account_set_reply.error.n);
+                    add_intern(pool, dst, src->u.account_set_reply.error.s, src->u.account_set_reply.error.n);
                 } else { return -1; }
             break;
         case ACCOUNT_GET:
             break;
         case ACCOUNT_LOGIN:
-            add_intern(dst, src->u.account_login.email.s, src->u.account_login.email.n);
-            add_intern(dst, src->u.account_login.password.s, src->u.account_login.password.n);
-            add_intern(dst, src->u.account_login.devname.s, src->u.account_login.devname.n);
+            add_intern(pool, dst, src->u.account_login.email.s, src->u.account_login.email.n);
+            add_intern(pool, dst, src->u.account_login.password.s, src->u.account_login.password.n);
+            add_intern(pool, dst, src->u.account_login.devname.s, src->u.account_login.devname.n);
             break;
         case ACCOUNT_LOGIN_REPLY:
             if(
@@ -320,24 +320,24 @@ int gc_serialize(sn *dst, struct proto_s *src)
                 (sn_memcmp("invalid_login", 13, src->u.account_login_reply.error.s, src->u.account_login_reply.error.n) == 0) ||
                 (sn_memcmp("general_failure", 15, src->u.account_login_reply.error.s, src->u.account_login_reply.error.n) == 0) ||
                 (sn_memcmp("already_logged", 14, src->u.account_login_reply.error.s, src->u.account_login_reply.error.n) == 0)                 ) {
-                    add_intern(dst, src->u.account_login_reply.error.s, src->u.account_login_reply.error.n);
+                    add_intern(pool, dst, src->u.account_login_reply.error.s, src->u.account_login_reply.error.n);
                 } else { return -1; }
             break;
         case ACCOUNT_EXISTS:
-            add_intern(dst, src->u.account_exists.email.s, src->u.account_exists.email.n);
-            add_intern(dst, src->u.account_exists.password.s, src->u.account_exists.password.n);
+            add_intern(pool, dst, src->u.account_exists.email.s, src->u.account_exists.email.n);
+            add_intern(pool, dst, src->u.account_exists.password.s, src->u.account_exists.password.n);
             break;
         case ACCOUNT_EXISTS_REPLY:
             if(
                 (sn_memcmp("ok", 2, src->u.account_exists_reply.error.s, src->u.account_exists_reply.error.n) == 0) ||
                 (sn_memcmp("invalid_login", 13, src->u.account_exists_reply.error.s, src->u.account_exists_reply.error.n) == 0) ||
                 (sn_memcmp("general_failure", 15, src->u.account_exists_reply.error.s, src->u.account_exists_reply.error.n) == 0)                 ) {
-                    add_intern(dst, src->u.account_exists_reply.error.s, src->u.account_exists_reply.error.n);
+                    add_intern(pool, dst, src->u.account_exists_reply.error.s, src->u.account_exists_reply.error.n);
                 } else { return -1; }
             break;
         case VERSION_MISMATCH:
-            add_intern(dst, src->u.version_mismatch.master.s, src->u.version_mismatch.master.n);
-            add_intern(dst, src->u.version_mismatch.slave.s, src->u.version_mismatch.slave.n);
+            add_intern(pool, dst, src->u.version_mismatch.master.s, src->u.version_mismatch.master.n);
+            add_intern(pool, dst, src->u.version_mismatch.slave.s, src->u.version_mismatch.slave.n);
             break;
 
         default:
