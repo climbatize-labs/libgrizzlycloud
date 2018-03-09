@@ -38,11 +38,11 @@ static void recv_append(struct gc_s *gc)
     }
 
     if(rb->recv.target != 0 && rb->recv.target <= rb->recv.len) {
-        c->net.buf = realloc(c->net.buf, rb->recv.target);
+        c->net.buf = hm_prealloc(gc->pool, c->net.buf, rb->recv.target);
         memcpy(c->net.buf, rb->recv.buf, rb->recv.target);
         c->net.n = rb->recv.target;
 
-        gc_ringbuffer_recv_pop(rb);
+        gc_ringbuffer_recv_pop(gc->pool, rb);
 
         if(c->callback.data) {
             c->callback.data(gc, c->net.buf, c->net.n);
@@ -66,10 +66,10 @@ void async_client_ssl_shutdown(struct gc_gen_client_ssl_s *c)
     if(c->ctx) SSL_CTX_free(c->ctx);
 
     if(c->net.buf) {
-        free(c->net.buf);
+        hm_pfree(c->base.pool, c->net.buf);
     }
 
-    gc_ringbuffer_send_pop_all(&c->base.rb);
+    gc_ringbuffer_send_pop_all(c->base.pool, &c->base.rb);
 
     hm_log(LOG_TRACE, c->base.log, "Removing client [%.*s:%d] fd: [%d] alive since: [%s]",
                                    sn_p(c->base.net.ip), c->base.net.port,
@@ -109,7 +109,7 @@ static void async_read_ssl(struct ev_loop *loop, ev_io *w, int revents)
     */
 
     if(t > 0) {
-        gc_ringbuffer_recv_append(&c->base.rb, t);
+        gc_ringbuffer_recv_append(c->base.pool, &c->base.rb, t);
         /*
         FIXME: add MAX so we don't spend all memory
         if(gc_ringbuffer_recv_is_full(&c->rb)) {
@@ -171,7 +171,7 @@ static void async_write_ssl(struct ev_loop *loop, ev_io *w, int revents)
     if(t == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) abort(); //goto again;
 
     if(t > 0) {
-        gc_ringbuffer_send_skip(&c->base.rb, t);
+        gc_ringbuffer_send_skip(c->base.pool, &c->base.rb, t);
         if(gc_ringbuffer_send_is_empty(&c->base.rb)) {
             ev_io_stop(loop, &c->base.write);
             if(c->callback.terminate) {
@@ -403,7 +403,7 @@ static void recv_append_client(struct gc_gen_client_s *c)
 
     next = gc_ringbuffer_recv_read(&c->base.rb, &sz);
     c->callback.data(c, next, sz);
-    gc_ringbuffer_recv_pop(&c->base.rb);
+    gc_ringbuffer_recv_pop(c->base.pool, &c->base.rb);
 }
 
 static void async_read(struct ev_loop *loop, ev_io *w, int revents)
@@ -434,7 +434,7 @@ static void async_read(struct ev_loop *loop, ev_io *w, int revents)
     hm_log(LOG_TRACE, c->base.log, "Received %d bytes from fd %d", sz, fd);
 
     if(sz > 0) {
-        gc_ringbuffer_recv_append(&c->base.rb, sz);
+        gc_ringbuffer_recv_append(c->base.pool, &c->base.rb, sz);
 
         if(gc_ringbuffer_recv_is_full(&c->base.rb)) {
             ev_io_stop(c->base.loop, &c->base.read);
@@ -495,7 +495,7 @@ static void async_write(struct ev_loop *loop, ev_io *w, int revents)
     hm_log(LOG_TRACE, c->base.log, "%d bytes sent to fd %d", sz, fd);
 
     if(sz > 0) {
-        gc_ringbuffer_send_skip(&c->base.rb, sz);
+        gc_ringbuffer_send_skip(c->base.pool, &c->base.rb, sz);
         if(gc_ringbuffer_send_is_empty(&c->base.rb)) {
             ev_io_stop(loop, &c->base.write);
         }

@@ -102,14 +102,14 @@ static void client_data(struct gc_gen_client_s *client, char *buf, const int len
 
 static int alloc_server(struct gc_s *gc, struct gc_gen_server_s **c, sn port_local)
 {
-    *c = malloc(sizeof(**c));
+    *c = hm_palloc(gc->pool, sizeof(**c));
     if(!*c) return GC_ERROR;
 
     memset(*c, 0, sizeof(**c));
 
     (*c)->loop = gc->loop;
     (*c)->log  = &gc->log;
-    (*c)->pool = NULL;
+    (*c)->pool = gc->pool;
     (*c)->callback.data = client_data;
     (*c)->host = "0.0.0.0";
 
@@ -119,7 +119,7 @@ static int alloc_server(struct gc_s *gc, struct gc_gen_server_s **c, sn port_loc
     int ret;
     ret = async_server(*c, gc);
     if(ret != GC_OK) {
-        free(*c);
+        hm_pfree(gc->pool, *c);
         return ret;
     }
 
@@ -137,7 +137,7 @@ int gc_tunnel_add(struct gc_s *gc, struct gc_device_pair_s *pair, sn type)
         if(ret != GC_OK) return ret;
     }
 
-    struct gc_tunnel_s *t = malloc(sizeof(*t));
+    struct gc_tunnel_s *t = hm_palloc(gc->pool, sizeof(*t));
     if(!t) return GC_ERROR;
 
     memset(t, 0, sizeof(*t));
@@ -159,7 +159,7 @@ int gc_tunnel_add(struct gc_s *gc, struct gc_device_pair_s *pair, sn type)
     return GC_OK;
 }
 
-void gc_tunnel_stop(sn pid)
+void gc_tunnel_stop(struct hm_pool_s *pool, sn pid)
 {
     struct gc_tunnel_s *t, *prev, *del;
     for(t = tunnels, prev = NULL; t != NULL; ) {
@@ -179,7 +179,7 @@ void gc_tunnel_stop(sn pid)
 
             del = t;
             t = t->next;
-            free(del);
+            hm_pfree(pool, del);
         } else {
             prev = t;
             t = t->next;
@@ -187,7 +187,7 @@ void gc_tunnel_stop(sn pid)
     }
 }
 
-void gc_tunnel_stop_all()
+void gc_tunnel_stop_all(struct hm_pool_s *pool)
 {
     struct gc_tunnel_s *t, *del;
 
@@ -195,7 +195,7 @@ void gc_tunnel_stop_all()
         if(t->server) async_server_shutdown(t->server);
         del = t;
         t = t->next;
-        free(del);
+        hm_pfree(pool, del);
     }
 
     tunnels = NULL;

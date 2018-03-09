@@ -50,13 +50,15 @@ int gc_endpoint_request(struct gc_s *gc, struct proto_s *p, char **argv, int arg
 /**
  * @brief Stop endpoint.
  *
+ * @param pool Memory pool.
  * @param log Logging stream.
  * @param address Process ID.
  * @param cloud Cloud name.
  * @param device Device name.
  * @return void.
  */
-void gc_endpoint_stop(struct hm_log_s *log, sn address, sn cloud, sn device);
+void gc_endpoint_stop(struct hm_pool_s *pool, struct hm_log_s *log,
+                      sn address, sn cloud, sn device);
 
 /**
  * @brief Stop all endpoints.

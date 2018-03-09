@@ -36,7 +36,7 @@ static void endpoint_stop_client(struct gc_gen_client_s *c)
 
             hm_log(LOG_TRACE, c->base.log, "Removed endpoint on fd [%.*s]",
                                            sn_p(ent->remote_fd));
-            free(ent);
+            hm_pfree(c->base.pool, ent);
 
             break;
         }
@@ -109,7 +109,7 @@ static int endpoint_add(sn key, sn remote_fd, sn backend_port,
                         struct gc_s *gc)
 {
     struct gc_endpoint_s *ent;
-    ent = malloc(sizeof(*ent));
+    ent = hm_palloc(gc->pool, sizeof(*ent));
     if(!ent) return GC_ERROR;
 
     snb_cpy_ds(ent->key,          key);
@@ -119,7 +119,7 @@ static int endpoint_add(sn key, sn remote_fd, sn backend_port,
 
     *ep = ent;
 
-    struct gc_gen_client_s *client = malloc(sizeof(*client));
+    struct gc_gen_client_s *client = hm_palloc(gc->pool, sizeof(*client));
     if(!client) return GC_ERROR;
 
     memset(client, 0, sizeof(*client));
@@ -167,7 +167,7 @@ static struct gc_endpoint_s *endpoint_find(sn key)
     return NULL;
 }
 
-void gc_endpoints_stop_all()
+void gc_endpoints_stop_all(struct hm_pool_s *pool)
 {
     struct gc_endpoint_s *ent, *del;
 
@@ -177,7 +177,7 @@ void gc_endpoints_stop_all()
         }
         del = ent;
         ent = ent->next;
-        free(del);
+        hm_pfree(pool, del);
     }
 
     endpoints = NULL;
@@ -210,7 +210,7 @@ int gc_endpoint_request(struct gc_s *gc, struct proto_s *p, char **argv, int arg
 
     sn_initr(fd, argv[2], strlen(argv[2]));
 
-    sn_bytes_new(key,    p->u.message_from.from_address.n + fd.n);
+    sn_bytes_new(gc->pool, key, p->u.message_from.from_address.n + fd.n);
     sn_bytes_append(key, p->u.message_from.from_address);
     sn_bytes_append(key, fd);
 
@@ -237,12 +237,13 @@ int gc_endpoint_request(struct gc_s *gc, struct proto_s *p, char **argv, int arg
                    p->u.message_from.body.s,
                    p->u.message_from.body.n);
 
-    sn_bytes_delete(key);
+    sn_bytes_delete(gc->pool, key);
 
     return GC_OK;
 }
 
-void gc_endpoint_stop(struct hm_log_s *log, sn address, sn cloud, sn device)
+void gc_endpoint_stop(struct hm_pool_s *pool, struct hm_log_s *log,
+                      sn address, sn cloud, sn device)
 {
     struct gc_endpoint_s *prev = NULL;
     struct gc_endpoint_s *ent;
@@ -260,7 +261,7 @@ void gc_endpoint_stop(struct hm_log_s *log, sn address, sn cloud, sn device)
                                    sn_p(cloud), sn_p(device),
                                    sn_p(ent->remote_fd),
                                    sn_p(ent->backend_port));
-            free(ent);
+            hm_pfree(pool, ent);
 
             break;
         }

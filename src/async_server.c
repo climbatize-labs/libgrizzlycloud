@@ -29,7 +29,7 @@ void async_client_shutdown(struct gc_gen_client_s *c)
 
     c->base.flags |= GC_WANT_SHUTDOWN;
 
-    gc_ringbuffer_send_pop_all(&c->base.rb);
+    gc_ringbuffer_send_pop_all(c->base.pool, &c->base.rb);
 
     hm_log(LOG_TRACE, c->base.log, "Removing client [%.*s:%d] fd: [%d] alive since: [%s]",
                                    sn_p(c->base.net.ip), c->base.net.port,
@@ -67,7 +67,7 @@ inline static void recv_append(struct gc_gen_client_s *c)
 
     buffer = gc_ringbuffer_recv_read(&c->base.rb, &sz);
     c->callback.data(c, buffer, sz);
-    gc_ringbuffer_recv_pop(&c->base.rb);
+    gc_ringbuffer_recv_pop(c->base.pool, &c->base.rb);
 }
 
 void async_handle_socket_errno(struct hm_log_s *l)
@@ -113,7 +113,7 @@ static void async_read(struct ev_loop *loop, ev_io *w, int revents)
     sz = recv(fd, c->base.rb.recv.tmp, RB_SLOT_SIZE, 0);
 
     if(sz > 0) {
-        gc_ringbuffer_recv_append(&c->base.rb, sz);
+        gc_ringbuffer_recv_append(c->base.pool, &c->base.rb, sz);
 
         if(gc_ringbuffer_recv_is_full(&c->base.rb)) {
             ev_io_stop(c->base.loop, &c->base.read);
@@ -173,7 +173,7 @@ static void async_write(struct ev_loop *loop, ev_io *w, int revents)
 
     sz = send(fd, next, sz, MSG_NOSIGNAL);
     if(sz > 0) {
-        gc_ringbuffer_send_skip(&c->base.rb, sz);
+        gc_ringbuffer_send_skip(c->base.pool, &c->base.rb, sz);
         if(gc_ringbuffer_send_is_empty(&c->base.rb)) {
             ev_io_stop(loop, &c->base.write);
         }
