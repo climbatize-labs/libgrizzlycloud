@@ -19,7 +19,8 @@
  */
 #include <gc.h>
 
-int hm_log_impl(int level, struct hm_log_s *log, const char *file, const int line, const char *func, const char *msg, ...)
+int hm_log_impl(enum loglevel_e level, struct hm_log_s *log, const char *file,
+                const int line, const char *func, const char *msg, ...)
 {
     size_t          len = 0;
     char            out[8192], buf[128];
@@ -97,7 +98,7 @@ int hm_log_impl(int level, struct hm_log_s *log, const char *file, const int lin
     return (nwritten == len) ? GC_OK : GC_ERROR;
 }
 
-int hm_log_open(struct hm_log_s *l, const char *filename, const int level)
+int hm_log_open(struct hm_log_s *l, const char *filename, enum loglevel_e level)
 {
     if(filename != NULL) {
         l->file = fopen(filename, "a");

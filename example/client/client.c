@@ -135,6 +135,7 @@ int main(int argc, char **argv)
     gci.loop                   = ev_default_loop(0);
     gci.cfgfile                = config_file;
     gci.logfile                = log_file;
+    gci.loglevel               = LOG_DEBUG;
     gci.callback.state_changed = callback_state_changed;
     gci.callback.login         = callback_login;
 
