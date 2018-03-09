@@ -379,7 +379,7 @@ struct gc_s *gc_init(struct gc_init_s *init)
     gc = gclocal = malloc(sizeof(*gc));
     memset(gc, 0, sizeof(*gc));
 
-    if(hm_log_open(&gc->log, init->logfile, LOG_TRACE) != GC_OK) {
+    if(hm_log_open(&gc->log, init->logfile, init->loglevel) != GC_OK) {
         return NULL;
     }
 

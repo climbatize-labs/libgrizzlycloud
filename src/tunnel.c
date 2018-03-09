@@ -88,7 +88,7 @@ static void client_data(struct gc_gen_client_s *client, char *buf, const int len
                                      sn_p(tunnel->port_local));
     sn_initr(snheader, header, strlen(header));
 
-    hm_log(LOG_DEBUG, client->base.log, "{Tunnel}: header [%.*s]",
+    hm_log(LOG_TRACE, client->base.log, "{Tunnel}: header [%.*s]",
                                         snheader.n, snheader.s);
 
     struct proto_s m = { .type = MESSAGE_TO };

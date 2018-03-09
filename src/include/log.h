@@ -21,10 +21,10 @@
 #define GC_LOG_H_
 
 /**
- * @brief Log errors.
+ * @brief Log level.
  *
  */
-enum errors_e {
+enum loglevel_e {
     LOG_EMERG = 0,
     LOG_ALERT,
     LOG_CRIT,
@@ -42,10 +42,10 @@ enum errors_e {
  */
 struct hm_log_s {
     const char *name;    /**< Filename. */
-    int        fd;       /**< File descriptor. */
-    FILE       *file;    /**< File stream. */
-    void       *data;    /**< User data. */
-    int        level;    /**< Log level. */
+    int             fd;       /**< File descriptor. */
+    FILE            *file;    /**< File stream. */
+    void            *data;    /**< User data. */
+    enum loglevel_e level;    /**< Log level. */
 };
 
 #define hm_log(t, l, fmt...)\
@@ -62,7 +62,7 @@ struct hm_log_s {
  * @param fmt Varg formatted message.
  * @return GC_OK on success, GC_ERROR on failure.
  */
-int hm_log_impl(int level, struct hm_log_s *log,
+int hm_log_impl(enum loglevel_e level, struct hm_log_s *log,
                 const char *file, int line, const char *func,
                 const char *fmt, ...)
                 __attribute__ ((format (printf, 6, 7)));
@@ -75,7 +75,7 @@ int hm_log_impl(int level, struct hm_log_s *log,
  * @param level Log level.
  * @return GC_OK on success, GC_ERROR on failure.
  */
-int hm_log_open(struct hm_log_s *l, const char *filename, const int level);
+int hm_log_open(struct hm_log_s *l, const char *filename, enum loglevel_e level);
 
 /**
  * @brief Close log.
