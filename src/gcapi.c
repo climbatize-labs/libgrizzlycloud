@@ -29,14 +29,15 @@ static int message_from(struct gc_s *gc, struct proto_s *p)
     int argc;
     int ret;
 
-    ret = gc_parse_delimiter(p->u.message_from.tp, &argv, &argc, '/');
+    ret = gc_parse_delimiter(gc->pool, p->u.message_from.tp,
+                             &argv, &argc, '/');
     if(ret != GC_OK) {
-        if(argv) free(argv);
+        if(argv) hm_pfree(gc->pool, argv);
         return ret;
     }
 
     if(argc < 1) {
-        if(argv) free(argv);
+        if(argv) hm_pfree(gc->pool, argv);
         return GC_ERROR;
     }
 
@@ -56,7 +57,7 @@ static int message_from(struct gc_s *gc, struct proto_s *p)
         }
     }
 
-    free(argv);
+    hm_pfree(gc->pool, argv);
 
     return GC_OK;
 }
@@ -85,12 +86,12 @@ static void cloud_offline(struct gc_s *gc, struct proto_s *p)
                                 sn_p(p->u.offline_set.device));
 
     pairs_offline(gc, p->u.offline_set.address);
-    gc_endpoint_stop(&gc->log,
+    gc_endpoint_stop(gc->pool, &gc->log,
                      p->u.offline_set.address,
                      p->u.offline_set.cloud,
                      p->u.offline_set.device);
 
-    gc_tunnel_stop(p->u.offline_set.address);
+    gc_tunnel_stop(gc->pool, p->u.offline_set.address);
 }
 
 static void gc_upstream_force_stop(struct ev_loop *loop)
@@ -114,7 +115,7 @@ static void callback_error(struct gc_gen_client_ssl_s *c, enum gcerr_e error)
     // Stop pair timer
     ev_timer_stop(gclocal->loop, &gclocal->config.pair_timer);
 
-    gc_tunnel_stop_all();
+    gc_tunnel_stop_all(c->base.pool);
     gc_endpoints_stop_all();
     if(c->base.active) {
         async_client_ssl_shutdown(c);
@@ -265,6 +266,7 @@ static void upstream_connect(struct ev_loop *loop, struct ev_timer *timer, int r
     memset(&gc->client, 0, sizeof(gc->client));
 
     gc->client.base.loop = loop;
+    gc->client.base.pool = gc->pool;
     gc->client.base.log  = &gc->log;
 
     gc->client.base.net.port = gc->port;
@@ -279,7 +281,7 @@ static void upstream_connect(struct ev_loop *loop, struct ev_timer *timer, int r
 
 void gc_deinit(struct gc_s *gc)
 {
-    if(gc->net.buf.s) free(gc->net.buf.s);
+    if(gc->net.buf.s) hm_pfree(gc->pool, gc->net.buf.s);
 
     hm_log_close(&gc->log);
 
@@ -291,7 +293,10 @@ void gc_deinit(struct gc_s *gc)
     ERR_remove_state(0);
     ERR_free_strings();
 
-    free(gc);
+    struct hm_pool_s *pool = gc->pool;
+    hm_pfree(pool, gc);
+
+    hm_destroy_pool(pool);
 
     ev_default_destroy();
 }
@@ -332,11 +337,11 @@ static void gc_signals(struct gc_s *gc)
     }
 }
 
-static int config_init(struct gc_config_s *cfg, const char *filename)
+static int config_init(struct hm_pool_s *pool, struct gc_config_s *cfg, const char *filename)
 {
     int ret;
 
-    ret = gc_config_parse(cfg, filename);
+    ret = gc_config_parse(pool, cfg, filename);
     if(ret != GC_OK) {
         hm_log(LOG_CRIT, cfg->log, "Parsing config file [%s] failed", filename);
         return GC_ERROR;
@@ -376,15 +381,24 @@ struct gc_s *gc_init(struct gc_init_s *init)
 
     assert(init);
 
-    gc = gclocal = malloc(sizeof(*gc));
-    memset(gc, 0, sizeof(*gc));
+    struct hm_pool_s *pool = hm_create_pool();
 
-    if(hm_log_open(&gc->log, init->logfile, LOG_TRACE) != GC_OK) {
+    if(pool == NULL) {
         return NULL;
     }
 
+    gc = gclocal = hm_palloc(pool, sizeof(*gc));
+    memset(gc, 0, sizeof(*gc));
+
+    if(hm_log_open(&gc->log, init->logfile, init->loglevel) != GC_OK) {
+        return NULL;
+    }
+
+    // Set memory pool
+    gc->pool = pool;
+
     gc->config.log = &gc->log;
-    if(config_init(&gc->config, init->cfgfile) != GC_OK) {
+    if(config_init(gc->pool, &gc->config, init->cfgfile) != GC_OK) {
         hm_log(LOG_CRIT, &gc->log, "Could not initialize config file");
         return NULL;
     }
@@ -424,17 +438,17 @@ struct gc_s *gc_init(struct gc_init_s *init)
     return gc;
 }
 
-static void gc_config_free(struct gc_config_s *cfg)
+static void gc_config_free(struct hm_pool_s *pool, struct gc_config_s *cfg)
 {
     ev_timer_stop(gclocal->loop, &cfg->pair_timer);
     json_object_put(cfg->jobj);
-    free(cfg->content);
+    hm_pfree(pool, cfg->content);
 }
 
 void gc_force_stop()
 {
-    gc_config_free(&gclocal->config);
+    gc_config_free(gclocal->pool, &gclocal->config);
     gc_upstream_force_stop(gclocal->loop);
-    gc_tunnel_stop_all();
+    gc_tunnel_stop_all(gclocal->pool);
     gc_endpoints_stop_all();
 }

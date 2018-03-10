@@ -19,12 +19,13 @@
  */
 #include <gc.h>
 
-static void ev_send(struct gc_ringbuffer_s *rb,
+static void ev_send(struct hm_pool_s *pool,
+                    struct gc_ringbuffer_s *rb,
                     struct ev_loop *loop,
                     struct ev_io *write,
                     char *buf, int len)
 {
-    gc_ringbuffer_send_append(rb, buf, len);
+    gc_ringbuffer_send_append(pool, rb, buf, len);
     ev_io_start(loop, write);
 }
 
@@ -39,7 +40,7 @@ static int net_send(struct gc_s *gc, const char *buffer, const int nbuffer)
 {
     int len = nbuffer;
     sn m = {
-        .s      = malloc(nbuffer + sizeof(int)),
+        .s      = hm_palloc(gc->pool, nbuffer + sizeof(int)),
         .n      = nbuffer + sizeof(int),
         .offset = 0};
     int tmplen = len;
@@ -52,7 +53,7 @@ static int net_send(struct gc_s *gc, const char *buffer, const int nbuffer)
     struct gc_gen_client_ssl_s *c = &gc->client;
     gc_ssl_ev_send(c, m.s, m.n);
 
-    free(m.s);
+    hm_pfree(gc->pool, m.s);
 
     return GC_OK;
 }
@@ -70,20 +71,20 @@ void gc_swap_memory(char *dst, int ndst)
 
 void gc_ssl_ev_send(struct gc_gen_client_ssl_s *client, char *buf, const int len)
 {
-    ev_send(&client->base.rb, client->base.loop,
-            &client->base.write, buf, len);
+    ev_send(client->base.pool, &client->base.rb,
+            client->base.loop, &client->base.write, buf, len);
 }
 
 void gc_gen_ev_send(struct gc_gen_client_s *client, char *buf, const int len)
 {
-    ev_send(&client->base.rb, client->base.loop,
+    ev_send(client->base.pool, &client->base.rb, client->base.loop,
             &client->base.write, buf, len);
 }
 
 int gc_packet_send(struct gc_s *gc, struct proto_s *pr)
 {
     sn dst;
-    if(gc_serialize(&dst, pr) != GC_OK) {
+    if(gc_serialize(gc->pool, &dst, pr) != GC_OK) {
         hm_log(LOG_DEBUG, &gc->log, "Packet serialization failed");
         return GC_ERROR;
     }
@@ -93,17 +94,18 @@ int gc_packet_send(struct gc_s *gc, struct proto_s *pr)
         return GC_ERROR;
     }
 
-    sn_free(dst);
+    sn_free(gc->pool, dst);
 
     return GC_OK;
 }
 
-int gc_parse_delimiter(sn input, char ***argv, int *argc, char delimiter)
+int gc_parse_delimiter(struct hm_pool_s *pool, sn input, char ***argv,
+                       int *argc, char delimiter)
 {
     char *start, *tmp;
 
 #define ASET\
-    *argv = realloc(*argv, (size_t)((++(*argc)) * sizeof(void *)));\
+    *argv = hm_prealloc(pool, *argv, (size_t)((++(*argc)) * sizeof(void *)));\
     if(!argv) return GC_ERROR;\
     (*argv)[*argc - 1] = start;
 
@@ -122,14 +124,14 @@ int gc_parse_delimiter(sn input, char ***argv, int *argc, char delimiter)
     return GC_OK;
 }
 
-int gc_config_parse(struct gc_config_s *cfg, const char *path)
+int gc_config_parse(struct hm_pool_s *pool, struct gc_config_s *cfg, const char *path)
 {
     char *content;
     int n;
 
     assert(cfg);
 
-    n = gc_fread(&content, path);
+    n = gc_fread(pool, &content, path);
     if(n <= 1) {
         return GC_ERROR;
     }
@@ -248,7 +250,7 @@ void gc_config_dump(struct gc_config_s *cfg)
     }
 }
 
-int gc_fread(char **dst, const char *fname)
+int gc_fread(struct hm_pool_s *pool, char **dst, const char *fname)
 {
     FILE *pfile;
     int lsize;
@@ -269,7 +271,7 @@ int gc_fread(char **dst, const char *fname)
         return -1;
     }
 
-    buffer = malloc(sizeof(char) * lsize);
+    buffer = hm_palloc(pool, sizeof(char) * lsize);
     if(buffer == NULL) {
         fclose(pfile);
         return -1;
@@ -278,7 +280,7 @@ int gc_fread(char **dst, const char *fname)
     result = fread(buffer, sizeof(char), lsize, pfile);
     if(result != lsize) {
         fclose(pfile);
-        free(buffer);
+        hm_pfree(pool, buffer);
         return -1;
     }
 
