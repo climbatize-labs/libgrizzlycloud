@@ -74,7 +74,7 @@ int ht_add(struct ht_s **ht, const char *key, const int nkey, const void *value,
 #ifdef POOL_STDLIB
                 memcpy(h->s, value, nvalue);
 #else
-                hm_memcpy(h->s, value, nvalue, h->s);
+                memcpy(h->s, value, nvalue);
 #endif
             } else {
                 h->s = (void *)value;
@@ -104,7 +104,7 @@ int ht_add(struct ht_s **ht, const char *key, const int nkey, const void *value,
 #ifdef POOL_STDLIB
     memcpy(h->k, key, nkey);
 #else
-    hm_memcpy(h->k, key, nkey, h->k);
+    memcpy(h->k, key, nkey);
 #endif
 
     if(alloc == HT_ALLOC) {
@@ -117,7 +117,7 @@ int ht_add(struct ht_s **ht, const char *key, const int nkey, const void *value,
 #ifdef POOL_STDLIB
         memcpy(h->s, value, nvalue);
 #else
-        hm_memcpy(h->s, value, nvalue, h->s);
+        memcpy(h->s, value, nvalue);
 #endif
     } else {
         h->flag = 0;
