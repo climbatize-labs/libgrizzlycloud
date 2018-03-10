@@ -90,8 +90,8 @@
  *
  * See sn_bytes_append(), sn_bytes_delete()
  */
-#define sn_bytes_new(m_var, m_size)\
-    sn m_var = { .s = malloc(m_size), .n = m_size, .offset = 0 };\
+#define sn_bytes_new(m_pool, m_var, m_size)\
+    sn m_var = { .s = hm_palloc(m_pool, m_size), .n = m_size, .offset = 0 };\
     assert(m_var.s != NULL);
 
 /*
@@ -110,7 +110,7 @@
  *
  * See sn_bytes_new(), sn_bytes_append()
  */
-#define sn_bytes_delete(m_var) free(m_var.s)
+#define sn_bytes_delete(m_pool, m_var) hm_pfree(m_pool, m_var.s)
 
 /*
  * Copy string m_src to buffer of chars m_var with size m_size
@@ -197,9 +197,9 @@
 /*
  * Free SN
  */
-#define sn_free(dst)\
+#define sn_free(m_pool, dst)\
     if(dst.n > 0) {\
-        if(dst.s) free(dst.s);\
+        if(dst.s) hm_pfree(m_pool, dst.s);\
         dst.s = NULL;\
         dst.n = 0;\
     }
@@ -255,11 +255,12 @@ void gc_config_dump(struct gc_config_s *cfg);
  * @brief Parse config file.
  *
  * Read @p path and fill @p cfg.
+ * @param pool Pool structure
  * @param cfg Config structure
  * @param path Path to filename
  * @return GC_OK on success, GC_ERROR on failure
  */
-int gc_config_parse(struct gc_config_s *cfg, const char *path);
+int gc_config_parse(struct hm_pool_s *pool, struct gc_config_s *cfg, const char *path);
 
 /**
  * @brief Send packet to upstream.
@@ -273,13 +274,15 @@ int gc_packet_send(struct gc_s *gc, struct proto_s *pr);
 /**
  * @brief Parse buffer by delimiter.
  *
+ * @param pool Memory pool.
  * @param input Buffer.
  * @param argv Pointer to array of parsed elements.
  * @param argc Number of elements in array.
  * @param delimiter Delimiter.
  * @return GC_OK on success, GC_ERROR on failure.
  */
-int gc_parse_delimiter(sn input, char ***argv, int *argc, char delimiter);
+int gc_parse_delimiter(struct hm_pool_s *pool, sn input, char ***argv,
+                       int *argc, char delimiter);
 
 /**
  * @brief Swap memory.
@@ -294,11 +297,12 @@ void gc_swap_memory(char *dst, int ndst);
  * @brief Read file.
  *
  * Read file @p fname and put its output to @p dst.
+ * @param pool Memory pool.
  * @param dst Pointer to memory region filled with file content.
  * @param fname File to read.
  * @return On failure -1, otherwise, size of read bytes.
  */
-int gc_fread(char **dst, const char *fname);
+int gc_fread(struct hm_pool_s *pool, char **dst, const char *fname);
 
 /**
  * @brief Create string representation of time.

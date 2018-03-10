@@ -33,14 +33,14 @@ char *gc_ringbuffer_send_next(struct gc_ringbuffer_s *rb, int *size)
     return (char *)(rb->send->buf + rb->send->sent);
 }
 
-static void gc_ringbuffer_next(struct gc_ringbuffer_s *rb)
+static void gc_ringbuffer_next(struct hm_pool_s *pool, struct gc_ringbuffer_s *rb)
 {
     struct gc_ringbuffer_slot_s *next;
 
     if(rb && rb->send && rb->send->sent == rb->send->len) {
         next = rb->send->next;
-        free(rb->send->buf);
-        free(rb->send);
+        hm_pfree(pool, rb->send->buf);
+        hm_pfree(pool, rb->send);
         rb->send = next;
         if(rb->send == NULL) {
             rb->tail = NULL;
@@ -48,13 +48,14 @@ static void gc_ringbuffer_next(struct gc_ringbuffer_s *rb)
     }
 }
 
-void gc_ringbuffer_send_skip(struct gc_ringbuffer_s *rb, int offset)
+void gc_ringbuffer_send_skip(struct hm_pool_s *pool, struct gc_ringbuffer_s *rb,
+                             int offset)
 {
     assert(rb);
     assert(rb->send);
     rb->send->sent += offset;
 
-    gc_ringbuffer_next(rb);
+    gc_ringbuffer_next(pool, rb);
 }
 
 int gc_ringbuffer_send_is_empty(struct gc_ringbuffer_s *rb)
@@ -63,15 +64,15 @@ int gc_ringbuffer_send_is_empty(struct gc_ringbuffer_s *rb)
     return (rb->send == NULL);
 }
 
-void gc_ringbuffer_send_pop_all(struct gc_ringbuffer_s *rb)
+void gc_ringbuffer_send_pop_all(struct hm_pool_s *pool, struct gc_ringbuffer_s *rb)
 {
     struct gc_ringbuffer_slot_s *r, *rdel;
 
     for(r = rb->send; r != NULL; ) {
-        free(r->buf);
+        hm_pfree(pool, r->buf);
         rdel = r;
         r = r->next;
-        free(rdel);
+        hm_pfree(pool, rdel);
     }
 }
 
@@ -87,18 +88,19 @@ int gc_ringbuffer_send_size(struct gc_ringbuffer_s *rb)
     return size;
 }
 
-int gc_ringbuffer_send_append(struct gc_ringbuffer_s *rb, char *buf, const int len)
+int gc_ringbuffer_send_append(struct hm_pool_s *pool, struct gc_ringbuffer_s *rb,
+                              char *buf, const int len)
 {
     assert(rb);
     struct gc_ringbuffer_slot_s *slot;
 
-    slot = malloc(sizeof(*slot));
+    slot = hm_palloc(pool, sizeof(*slot));
     if(slot == NULL) {
         return GC_ERROR;
     }
-    slot->buf = malloc(len);
+    slot->buf = hm_palloc(pool, len);
     if(slot->buf == NULL) {
-        free(slot);
+        hm_pfree(pool, slot);
         return GC_ERROR;
     }
 
@@ -118,21 +120,22 @@ int gc_ringbuffer_send_append(struct gc_ringbuffer_s *rb, char *buf, const int l
     return GC_OK;
 }
 
-void gc_ringbuffer_recv_append(struct gc_ringbuffer_s *rb, const int len)
+void gc_ringbuffer_recv_append(struct hm_pool_s *pool, struct gc_ringbuffer_s *rb,
+                               const int len)
 {
     assert(rb);
-    rb->recv.buf = realloc(rb->recv.buf, rb->recv.len + len);
+    rb->recv.buf = hm_prealloc(pool, rb->recv.buf, rb->recv.len + len);
     memcpy(rb->recv.buf + rb->recv.len, rb->recv.tmp, len);
     rb->recv.len += len;
 }
 
-void gc_ringbuffer_recv_pop(struct gc_ringbuffer_s *rb)
+void gc_ringbuffer_recv_pop(struct hm_pool_s *pool, struct gc_ringbuffer_s *rb)
 {
     assert(rb);
     rb->recv.len = 0;
     rb->recv.target = 0;
     if(rb->recv.buf) {
-        free(rb->recv.buf);
+        hm_pfree(pool, rb->recv.buf);
         rb->recv.buf = NULL;
     }
 }
