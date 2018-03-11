@@ -1,2 +1,2 @@
 all:
-	gcc -Wall -g -I../../src/include ../../src/ringbuffer.c main.c -o rb
+	gcc -Wall -g -I../../src/include -L../../ main.c -o rb -lgrizzlycloud -lm
