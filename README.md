@@ -33,12 +33,7 @@ Example client configuration:
                    {"cloud"      : "user2",
                     "device"     : "DevName2",
                     "port"       : 22,
-                    "portLocal"  : 1230 },
-
-                   {"cloud"      : "user2",
-                    "device"     : "DevName2",
-                    "port"       : 22,
-                    "portLocal"  : 1231 }
+                    "portLocal"  : 1230 }
                  ]
 }
 ```
@@ -53,6 +48,8 @@ Example server configuration:
     "allow"    : [ 22 ]
 }
 ```
+
+At this point, if you go to port **1230**, all your data will be redirected to port **22**.
 
 Don't forget to replace user and password parameters. Create your own account [here](https://grizzlycloud.com/signup.php).
 
