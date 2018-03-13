@@ -48,12 +48,12 @@ static int message_from(struct gc_s *gc, struct proto_s *p)
     if(sn_cmps(type, request)) {
         ret = gc_endpoint_request(gc, p, argv, argc);
         if(ret != GC_OK) {
-            hm_log(LOG_ERR, &gc->log, "Tunnel request failed");
+            hm_log(LOG_TRACE, &gc->log, "Tunnel request failed");
         }
     } else if(sn_cmps(type, response)) {
         ret = gc_tunnel_response(gc, p, argv, argc);
         if(ret != GC_OK) {
-            hm_log(LOG_ERR, &gc->log, "Tunnel reponse failed");
+            hm_log(LOG_TRACE, &gc->log, "Tunnel reponse failed");
         }
     }
 
@@ -248,6 +248,10 @@ static void callback_data(struct gc_s *gc, const void *buffer, const int nbuffer
         break;
         case OFFLINE_SET: {
                 cloud_offline(gc, &p);
+            }
+        break;
+        case MESSAGE_TO_SET_REPLY: {
+                hm_log(LOG_TRACE, &gc->log, "Message to acknowledged");
             }
         break;
         default:
