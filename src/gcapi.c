@@ -307,7 +307,7 @@ static void sigh_terminate(int __attribute__ ((unused)) signo)
 
     gc_sigterm = 1;
     hm_log(LOG_TRACE, &gclocal->log, "Received SIGTERM");
-    gc_force_stop();
+    ev_timer_again(gclocal->loop, &gclocal->shutdown_timer);
 }
 
 static void gc_signals(struct gc_s *gc)
@@ -375,6 +375,8 @@ static int config_required(struct gc_config_s *cfg)
     return GC_OK;
 }
 
+static void stop(struct ev_loop *loop, struct ev_timer *timer, int revents);
+
 struct gc_s *gc_init(struct gc_init_s *init)
 {
     struct gc_s *gc = NULL;
@@ -435,8 +437,13 @@ struct gc_s *gc_init(struct gc_init_s *init)
     gc->connect_timer.data = gc;
     ev_timer_again(gc->loop, &gc->connect_timer);
 
+    ev_init(&gc->shutdown_timer, stop);
+    gc->shutdown_timer.repeat = 0.1;
+    gc->shutdown_timer.data = gc;
+
     return gc;
 }
+
 
 static void gc_config_free(struct hm_pool_s *pool, struct gc_config_s *cfg)
 {
@@ -445,10 +452,19 @@ static void gc_config_free(struct hm_pool_s *pool, struct gc_config_s *cfg)
     hm_pfree(pool, cfg->content);
 }
 
+static void stop(struct ev_loop *loop, struct ev_timer *timer, int revents)
+{
+    struct gc_s *gc = (struct gc_s *)timer->data;
+
+    ev_timer_stop(gc->loop, &gc->shutdown_timer);
+
+    gc_config_free(gc->pool, &gc->config);
+    gc_upstream_force_stop(gc->loop);
+    gc_tunnel_stop_all(gc->pool);
+    gc_endpoints_stop_all();
+}
+
 void gc_force_stop()
 {
-    gc_config_free(gclocal->pool, &gclocal->config);
-    gc_upstream_force_stop(gclocal->loop);
-    gc_tunnel_stop_all(gclocal->pool);
-    gc_endpoints_stop_all();
+    ev_timer_again(gclocal->loop, &gclocal->shutdown_timer);
 }
