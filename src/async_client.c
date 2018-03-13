@@ -549,5 +549,8 @@ int async_client(struct gc_gen_client_s *client)
         return GC_ERROR;
     }
 
+    hm_log(LOG_DEBUG, client->base.log, "Adding endpoint TCP client [%.*s:%d] fd: [%d]",
+                                        sn_p(client->base.net.ip), client->base.net.port,
+                                        client->base.fd);
     return GC_OK;
 }
