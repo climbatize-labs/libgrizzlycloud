@@ -31,7 +31,7 @@ void async_client_shutdown(struct gc_gen_client_s *c)
 
     gc_ringbuffer_send_pop_all(c->base.pool, &c->base.rb);
 
-    hm_log(LOG_TRACE, c->base.log, "Removing client [%.*s:%d] fd: [%d] alive since: [%s]",
+    hm_log(LOG_DEBUG, c->base.log, "Removing TCP client [%.*s:%d] fd: [%d] alive since: [%s]",
                                    sn_p(c->base.net.ip), c->base.net.port,
                                    c->base.fd, c->base.date);
 
@@ -73,18 +73,18 @@ inline static void recv_append(struct gc_gen_client_s *c)
 void async_handle_socket_errno(struct hm_log_s *l)
 {
     if(errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR) {
-        hm_log(LOG_TRACE, l, "Socket errno %d", errno);
+        hm_log(LOG_TRACE, l, "Client error: Socket errno %d", errno);
         return;
     }
 
     if(errno == ECONNRESET) {
-        hm_log(LOG_ERR, l, "Connection reset by peer");
+        hm_log(LOG_TRACE, l, "Client error: connection reset by peer");
     } else if(errno == ETIMEDOUT) {
-        hm_log(LOG_ERR, l, "Connection to backend timed out");
+        hm_log(LOG_TRACE, l, "Client error: connection to backend timed out");
     } else if(errno == EPIPE) {
-        hm_log(LOG_ERR, l, "Broken pipe to backend (EPIPE)");
+        hm_log(LOG_TRACE, l, "Client error: broken pipe to backend (EPIPE)");
     } else {
-        hm_log(LOG_ERR, l, "Errno: %d", errno);
+        hm_log(LOG_TRACE, l, "Client error: errno %d", errno);
     }
 }
 
@@ -205,12 +205,12 @@ static int connector_addclient(struct gc_gen_server_s *cs, struct gc_gen_client_
     char key[8];
     snprintf(key, sizeof(key), "%d", cc->base.fd);
     if(HT_ADD_WA(cs->clients, key, strlen(key), cc, sizeof(cc), cs->pool) != GC_OK) {
-        hm_log(LOG_ERR, cs->log, "{Connector}: Cannot add key [%s] to hashtable", key);
+        hm_log(LOG_ERR, cs->log, "Cannot add key [%s] to hashtable", key);
         return GC_ERROR;
     }
 
-    hm_log(LOG_NOTICE, cs->log, "{Connector}: adding client %.*s:%d:%d",
-                                sn_p(cc->base.net.ip), cc->base.fd, cc->base.net.port);
+    hm_log(LOG_DEBUG, cs->log, "Adding tunnel TCP client [%.*s:%d] fd: [%d]",
+                                sn_p(cc->base.net.ip), cc->base.net.port, cc->base.fd);
 
     return GC_OK;
 }
@@ -291,13 +291,12 @@ static void server_async_client(struct ev_loop *loop, ev_io *w, int revents)
     }
 
     if(peer == -1) {
-        hm_log(LOG_WARNING, cs->log, "{Connector}: Couldn't retrieve peer name");
+        hm_log(LOG_WARNING, cs->log, "Couldn't retrieve peer name");
     }
 #endif
 
     cc = hm_palloc(cs->pool, sizeof(struct gc_gen_client_s));
     if(cc == NULL) {
-        hm_log(LOG_WARNING, cs->log, "{Connector}: Memory allocation failed");
         return;
     }
 

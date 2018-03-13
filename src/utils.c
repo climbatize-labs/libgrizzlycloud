@@ -248,6 +248,8 @@ void gc_config_dump(struct gc_config_s *cfg)
                                     cfg->tunnels[i].port,
                                     cfg->tunnels[i].port_local);
     }
+
+    hm_log(LOG_DEBUG, cfg->log, "Config dump ended");
 }
 
 int gc_fread(struct hm_pool_s *pool, char **dst, const char *fname)
