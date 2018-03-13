@@ -12,6 +12,9 @@ static void client_login(struct gc_s *gc)
     sn_set(as.u.account_login.password, gc->config.password);
     sn_set(as.u.account_login.devname,  gc->config.device);
 
+    hm_log(LOG_DEBUG, &gc->log, "Sending login request for username [%.*s]",
+                                sn_p(gc->config.username));
+
     int ret;
     ret = gc_packet_send(gc, &as);
     if(ret != GC_OK) CALLBACK_ERROR(&gc->log, "client_login");
@@ -135,7 +138,7 @@ int main(int argc, char **argv)
     gci.loop                   = ev_default_loop(0);
     gci.cfgfile                = config_file;
     gci.logfile                = log_file;
-    gci.loglevel               = LOG_DEBUG;
+    gci.loglevel               = LOG_TRACE;
     gci.callback.state_changed = callback_state_changed;
     gci.callback.login         = callback_login;
 
