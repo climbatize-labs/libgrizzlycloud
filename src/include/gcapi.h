@@ -134,6 +134,7 @@ struct gc_s {
     struct hm_pool_s    *pool;                          /**< Memory pool. */
     struct hm_log_s     log;                            /**< Log structure. */
     struct ev_timer     connect_timer;                  /**< Event timer to re-establish upstream connection. */
+    struct ev_timer     shutdown_timer;                 /**< Shutdown timer to close asynchronouslly. */
     snb                 hostname;                       /**< Upstream. */
     int                 port;                           /**< Upstream's port. */
     struct gc_gen_client_ssl_s client;                  /**< Client's structure. */
