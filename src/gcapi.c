@@ -435,6 +435,8 @@ struct gc_s *gc_init(struct gc_init_s *init)
 
     SSL_load_error_strings();
 
+    hm_log(LOG_DEBUG, &gc->log, "Openssl version: 0x%lx", OPENSSL_VERSION_NUMBER);
+
     // Try to connect to upstream every .repeat seconds
     ev_init(&gc->connect_timer, upstream_connect);
     gc->connect_timer.repeat = 2.0;
