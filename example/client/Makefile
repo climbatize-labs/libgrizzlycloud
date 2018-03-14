@@ -1,6 +1,6 @@
-LIBS    := -lgrizzlycloud -lssl -lcrypto -lev -lm -ljson-c
-INCS    := -I. -I../../src/include
-LIBDIR  := -L../../
+LIBS    := -lgrizzlycloud -lev -lm -ljson-c -lssl -lcrypto -ldl
+INCS    := -I. -I../../src/include -I../../../libssl/include
+LIBDIR  := -L../../ -L../../../libssl/
 BIN     := grizzlycloud
 
 all: lib client
