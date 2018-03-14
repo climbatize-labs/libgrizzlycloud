@@ -1,7 +1,7 @@
 SRC_FILES   := $(shell find src/ -type f -name *.c)
 OBJ_FILES   := $(SRC_FILES:.c=.o)
 LIB         := libgrizzlycloud.a
-CFLAGS      += -g -Wall -Isrc/include
+CFLAGS      += -g -Wall -Isrc/include -I../libssl/include
 
 $(LIB): $(OBJ_FILES)
 	ar rcs $@ $^

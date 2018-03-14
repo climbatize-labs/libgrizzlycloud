@@ -8,7 +8,7 @@ GrizzlyCloud is a simplified VPN alternative for IoT (Internet of Things). Essen
 Compiled against:
 - libev-dev 4.22
 - libjson-c-dev 0.11
-- libssl-dev 1.0.2g
+- [libssl-dev 1.0.2n](https://github.com/GrizzlyCloud/libssl)
 
 # Build
 
