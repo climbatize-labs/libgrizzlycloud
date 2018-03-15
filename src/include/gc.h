@@ -43,7 +43,7 @@
 #include <time.h>
 #include <math.h>
 
-#include <json-c/json.h>
+#include <json.h>
 #include <ev.h>
 #include <openssl/ssl.h>
 #include <openssl/engine.h>
