@@ -403,6 +403,11 @@ struct gc_s *gc_init(struct gc_init_s *init)
     // Set memory pool
     gc->pool = pool;
 
+    hm_log(LOG_DEBUG, &gc->log, "Openssl version: 0x%lx", OPENSSL_VERSION_NUMBER);
+    hm_log(LOG_DEBUG, &gc->log, "Json-c version: %s",     JSON_C_VERSION);
+    hm_log(LOG_DEBUG, &gc->log, "Libev version: %d.%d",   EV_VERSION_MAJOR,
+                                                          EV_VERSION_MINOR);
+
     gc->config.log = &gc->log;
     if(config_init(gc->pool, &gc->config, init->cfgfile) != GC_OK) {
         hm_log(LOG_CRIT, &gc->log, "Could not initialize config file");
@@ -434,8 +439,6 @@ struct gc_s *gc_init(struct gc_init_s *init)
     }
 
     SSL_load_error_strings();
-
-    hm_log(LOG_DEBUG, &gc->log, "Openssl version: 0x%lx", OPENSSL_VERSION_NUMBER);
 
     // Try to connect to upstream every .repeat seconds
     ev_init(&gc->connect_timer, upstream_connect);
