@@ -20,7 +20,7 @@ make build-deps
 make -C ./example/client
 ```
 
-- [Travis Build](https://travis-ci.org/GrizzlyCloud/grizzlycloudlib) ![Travis Build Status](https://travis-ci.org/GrizzlyCloud/grizzlycloudlib.svg?branch=master)
+- [Travis Build](https://travis-ci.org/GrizzlyCloud/libgrizzlycloud) ![Travis Build Status](https://travis-ci.org/GrizzlyCloud/libgrizzlycloud.svg?branch=master)
 
 # Guide
 
