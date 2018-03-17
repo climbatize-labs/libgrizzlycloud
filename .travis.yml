@@ -11,6 +11,4 @@ compiler:
     - gcc
 
 script:
-    - make get-deps
-    - make build-deps
-    - make -C ./example/client
+    - make uninstalled

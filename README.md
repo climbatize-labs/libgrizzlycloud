@@ -5,8 +5,7 @@ GrizzlyCloud is a simplified VPN alternative for IoT (Internet of Things). Essen
 
 # Requirements
 
-Compiled against:
-- [libssl 1.0.2n](https://github.com/GrizzlyCloud/libssl)
+- [openssl 1.0.2n](https://github.com/GrizzlyCloud/openssl)
 - [libev 4.22](https://github.com/GrizzlyCloud/libev)
 - [libjson-c 0.11](https://github.com/GrizzlyCloud/json-c)
 
@@ -15,9 +14,7 @@ Compiled against:
 Build process should not break your current environment, as all required dependencies are fetched and built locally without installation. Dependencies are built and linked statically. Libssl is built with -DPURIFY because of valgrind tests.
 
 ```sh
-make get-deps
-make build-deps
-make -C ./example/client
+make uninstalled
 ```
 
 - [Travis Build](https://travis-ci.org/GrizzlyCloud/libgrizzlycloud) ![Travis Build Status](https://travis-ci.org/GrizzlyCloud/libgrizzlycloud.svg?branch=master)
