@@ -1,5 +1,5 @@
 JSON_C_DIR=../../deps/libjson-c
-SSL_DIR=../../deps/libssl
+SSL_DIR=../../deps/openssl
 EV_DIR=../../deps/libev
 GC_DIR=../../
 
