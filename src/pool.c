@@ -106,7 +106,7 @@ static void *pool_get_node(struct hm_pool_s *pool, const int realsize)
 }
 
 /** don't do anything but creating a zero valued holder */
-struct hm_pool_s *hm_create_pool(struct hm_log_s *log)
+struct hm_pool_s *hm_create_pool()
 {
     struct hm_pool_s *pool;
 
@@ -117,11 +117,7 @@ struct hm_pool_s *hm_create_pool(struct hm_log_s *log)
     }
 
     memset(pool, 0, sizeof(*pool));
-    pool->log = log;
 
-#ifdef POOL_DEBUG
-    hm_log(LOG_TRACE, pool->log, "{Pool}: pool created %p", pool);
-#endif
     return pool;
 }
 
