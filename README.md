@@ -13,10 +13,11 @@ GrizzlyCloud is a simplified VPN alternative for IoT (Internet of Things). Essen
 
 Build process should not break your current environment, as all required dependencies are fetched and built locally without installation. Dependencies are built and linked statically. Libssl is built with -DPURIFY because of valgrind tests.
 
+- Linux, Windows (Cygwin)
+
 ```sh
 make uninstalled
 ```
-
 - [Travis Build](https://travis-ci.org/GrizzlyCloud/libgrizzlycloud) ![Travis Build Status](https://travis-ci.org/GrizzlyCloud/libgrizzlycloud.svg?branch=master)
 
 # Guide
