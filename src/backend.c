@@ -64,7 +64,12 @@ static struct backend_s *backend_ping(struct gc_s *gcs,
 
     for(i = 0; i < amount; i++) {
         char pcmd[128];
+
+#ifdef __linux__
         snprintf(pcmd, sizeof(pcmd), "ping -c 3 %s", seed[i].ip);
+#else
+        snprintf(pcmd, sizeof(pcmd), "ping %s -n 3", seed[i].ip);
+#endif
 
         hm_log(LOG_TRACE, &gcs->log, "Running ping command: [%s]", pcmd);
 
