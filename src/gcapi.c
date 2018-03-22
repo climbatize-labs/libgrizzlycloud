@@ -400,6 +400,8 @@ struct gc_s *gc_init(struct gc_init_s *init)
         return NULL;
     }
 
+    pool->log = &gc->log;
+
     // Set memory pool
     gc->pool = pool;
 
