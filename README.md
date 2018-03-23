@@ -16,6 +16,7 @@ Build process should not break your current environment, as all required depende
 - Linux, Windows (Cygwin)
 
 ```sh
+./configure
 make uninstalled
 ```
 - [Travis Build](https://travis-ci.org/GrizzlyCloud/libgrizzlycloud) ![Travis Build Status](https://travis-ci.org/GrizzlyCloud/libgrizzlycloud.svg?branch=master)
