@@ -11,4 +11,5 @@ compiler:
     - gcc
 
 script:
+    - ./configure
     - make uninstalled
