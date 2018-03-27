@@ -11,5 +11,6 @@ compiler:
     - gcc
 
 script:
+    - ./autogen.sh
     - ./configure
     - make uninstalled
