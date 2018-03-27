@@ -16,6 +16,7 @@ Build process should not break your current environment, as all required depende
 - Linux, Windows (Cygwin)
 
 ```sh
+./autogen.sh
 ./configure
 make uninstalled
 ```
