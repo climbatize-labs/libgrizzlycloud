@@ -34,6 +34,6 @@ get-deps:
 build-deps:
 	cd deps/openssl/ && ./config -DPURIFY && make
 	cd deps/libev/ && ./configure && make
-	cd deps/libjson-c/ && git checkout json-c-0.11-20130402 && ./configure && make
+	cd deps/libjson-c/ && ./autogen.sh && ./configure && make
 
 uninstalled: get-deps build-deps all
