@@ -1,7 +1,7 @@
 /*
  *
  * GrizzlyCloud library - simplified VPN alternative for IoT
- * Copyright (C) 2016 - 2017 Filip Pancik
+ * Copyright (C) 2017 - 2018 Filip Pancik
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,16 +31,16 @@
 void gc_proto_dump(struct proto_s *p)
 {
     switch(p->type) {
-    case MESSAGE_TO_SET_REPLY:
-        printf("MESSAGE_TO_SET_REPLY\n");
-        printf("error: %.*s\n", p->u.message_to_set_reply.error.n, p->u.message_to_set_reply.error.s);
-        break;
     case MESSAGE_TO:
         printf("MESSAGE_TO\n");
         printf("to: %.*s\n", p->u.message_to.to.n, p->u.message_to.to.s);
         printf("address: %.*s\n", p->u.message_to.address.n, p->u.message_to.address.s);
         printf("tp: %.*s\n", p->u.message_to.tp.n, p->u.message_to.tp.s);
         printf("body: %.*s\n", p->u.message_to.body.n, p->u.message_to.body.s);
+        break;
+    case MESSAGE_TO_SET_REPLY:
+        printf("MESSAGE_TO_SET_REPLY\n");
+        printf("error: %.*s\n", p->u.message_to_set_reply.error.n, p->u.message_to_set_reply.error.s);
         break;
     case ACCOUNT_LIST:
         printf("ACCOUNT_LIST\n");
@@ -219,6 +219,12 @@ int gc_serialize(struct hm_pool_s *pool, sn *dst, struct proto_s *src)
     add_uint(pool, src->type);
 
     switch(src->type) {
+        case MESSAGE_TO:
+            add_intern(pool, dst, src->u.message_to.to.s, src->u.message_to.to.n);
+            add_intern(pool, dst, src->u.message_to.address.s, src->u.message_to.address.n);
+            add_intern(pool, dst, src->u.message_to.tp.s, src->u.message_to.tp.n);
+            add_intern(pool, dst, src->u.message_to.body.s, src->u.message_to.body.n);
+            break;
         case MESSAGE_TO_SET_REPLY:
             if(
                 (sn_memcmp("ok", 2, src->u.message_to_set_reply.error.s, src->u.message_to_set_reply.error.n) == 0) ||
@@ -228,12 +234,6 @@ int gc_serialize(struct hm_pool_s *pool, sn *dst, struct proto_s *src)
                 (sn_memcmp("general_failure", 15, src->u.message_to_set_reply.error.s, src->u.message_to_set_reply.error.n) == 0)                 ) {
                     add_intern(pool, dst, src->u.message_to_set_reply.error.s, src->u.message_to_set_reply.error.n);
                 } else { return -1; }
-            break;
-        case MESSAGE_TO:
-            add_intern(pool, dst, src->u.message_to.to.s, src->u.message_to.to.n);
-            add_intern(pool, dst, src->u.message_to.address.s, src->u.message_to.address.n);
-            add_intern(pool, dst, src->u.message_to.tp.s, src->u.message_to.tp.n);
-            add_intern(pool, dst, src->u.message_to.body.s, src->u.message_to.body.n);
             break;
         case ACCOUNT_LIST:
             break;
@@ -368,11 +368,6 @@ int gc_deserialize(struct proto_s *dst, sn *src)
     CRET(get_enum(src, &dst->type))
 
     switch(dst->type) {
-    case MESSAGE_TO_SET_REPLY:
-        { sn tmp; CRET(get_intern(&tmp, src));
-        dst->u.message_to_set_reply.error.s = tmp.s;
-        dst->u.message_to_set_reply.error.n = tmp.n;}
-        break;
     case MESSAGE_TO:
         { sn tmp; CRET(get_intern(&tmp, src));
         dst->u.message_to.to.s = tmp.s;
@@ -386,6 +381,11 @@ int gc_deserialize(struct proto_s *dst, sn *src)
         { sn tmp; CRET(get_intern(&tmp, src));
         dst->u.message_to.body.s = tmp.s;
         dst->u.message_to.body.n = tmp.n;}
+        break;
+    case MESSAGE_TO_SET_REPLY:
+        { sn tmp; CRET(get_intern(&tmp, src));
+        dst->u.message_to_set_reply.error.s = tmp.s;
+        dst->u.message_to_set_reply.error.n = tmp.n;}
         break;
     case ACCOUNT_LIST:
         break;
