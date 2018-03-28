@@ -8,8 +8,8 @@
 #define GCPROTO_ERR_VERSION 2
 
 enum proto_e {
-    MESSAGE_TO_SET_REPLY,
     MESSAGE_TO,
+    MESSAGE_TO_SET_REPLY,
     ACCOUNT_LIST,
     ACCOUNT_LIST_REPLY,
     TRAFFIC_MI,
@@ -33,14 +33,14 @@ struct proto_s {
     enum proto_e type;
     union {
         struct {
-            sn     error;
-        } message_to_set_reply;
-        struct {
             sn     to;
             sn     address;
             sn     tp;
             sn     body;
         } message_to;
+        struct {
+            sn     error;
+        } message_to_set_reply;
         struct {
             /* void */
         } account_list;
