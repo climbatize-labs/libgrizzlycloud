@@ -27,13 +27,11 @@ grizzlycloud_LDADD = libgrizzlycloud.a \
             -ldl -lm
 
 get-deps:
-	git clone https://github.com/GrizzlyCloud/openssl.git deps/openssl/
-	git clone https://github.com/GrizzlyCloud/libev.git  deps/libev/
-	git clone https://github.com/GrizzlyCloud/json-c.git deps/libjson-c/
+	git submodule update --init --recursive
 
 build-deps:
 	cd deps/openssl/ && ./config -DPURIFY && make
 	cd deps/libev/ && ./configure && make
-	cd deps/libjson-c/ && ./autogen.sh && ./configure && make
+	cd deps/libjson-c/ && ./configure && make
 
 uninstalled: get-deps build-deps all
