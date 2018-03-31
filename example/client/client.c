@@ -1,5 +1,17 @@
 #include <gc.h>
 
+static void callback_traffic(struct gc_s *gc, sn error, sn type, sn cloud,
+                             sn device, sn upload, sn download)
+{
+    hm_log(LOG_DEBUG, &gc->log, "Traffic get: [%.*s:%.*s:%.*s:%.*s:%.*s:%.*s]",
+                                sn_p(error),
+                                sn_p(type),
+                                sn_p(cloud),
+                                sn_p(device),
+                                sn_p(upload),
+                                sn_p(download));
+}
+
 static void callback_login(struct gc_s *gc, sn error)
 {
     hm_log(LOG_DEBUG, &gc->log, "Login error: [%.*s]", sn_p(error));
@@ -95,6 +107,7 @@ int main(int argc, char **argv)
         printf("  --log <file>    - Set log file.\n");
         printf("  --nolog         - Redirect all log messages to stdout.\n");
         printf("  --daemonize     - Daemonize client.\n");
+        printf("  --traffic       - Get current traffic (Administration only).\n");
         printf("\n");
         exit(1);
     }
@@ -103,6 +116,7 @@ int main(int argc, char **argv)
     const char *log_file    = NULL;
     int nolog = 0;
     int daemonize = 0;
+    int traffic   = 0;
 
     int i;
     for(i = 0; i < argc; i++) {
@@ -114,6 +128,8 @@ int main(int argc, char **argv)
             nolog = 1;
         else if(strcmp(argv[i], "--daemonize") == 0)
             daemonize = 1;
+        else if(strcmp(argv[i], "--traffic") == 0)
+            traffic = 1;
     }
 
     if(config_file == NULL) {
@@ -141,6 +157,8 @@ int main(int argc, char **argv)
     gci.loglevel               = LOG_TRACE;
     gci.callback.state_changed = callback_state_changed;
     gci.callback.login         = callback_login;
+    gci.callback.traffic       = callback_traffic;
+    gci.traffic                = traffic == 1 ? 1 : 0;
 
     gc = gc_init(&gci);
     if(gc == NULL) {

@@ -149,6 +149,15 @@ static void device_pair_reply(struct gc_s *gc, struct gc_device_pair_s *pair)
     }
 }
 
+static void traffic_mi(struct gc_s *gc)
+{
+    struct proto_s pr = { .type = TRAFFIC_MI };
+
+    int ret;
+    ret = gc_packet_send(gc, &pr);
+    if(ret != GC_OK) CALLBACK_ERROR(&gc->log, "traffic_mi");
+}
+
 static void devices_pair(struct ev_loop *loop, struct ev_timer *timer, int revents)
 {
     struct gc_s *gc = (struct gc_s *)timer->data;
@@ -185,12 +194,52 @@ static void client_logged(struct gc_s *gc, sn error)
     sn_initz(ok_reg, "ok_registered");
 
     if(sn_cmps(ok, error)) {
-        ev_init(&gc->config.pair_timer, devices_pair);
-        gc->config.pair_timer.repeat = 2.0;
-        gc->config.pair_timer.data = gc;
-        ev_timer_again(gc->loop, &gc->config.pair_timer);
+        sn_initz(traffic, "traffic");
+        sn_initz(action, "action");
+        if(sn_cmps(gc->config.action, traffic)) {
+            traffic_mi(gc);
+        } else {
+            ev_init(&gc->config.pair_timer, devices_pair);
+            gc->config.pair_timer.repeat = 2.0;
+            gc->config.pair_timer.data = gc;
+            ev_timer_again(gc->loop, &gc->config.pair_timer);
+        }
     } else if(!sn_cmps(ok_reg, error)) {
         gc_force_stop();
+    }
+}
+
+static void parse_traffic(struct gc_s *gc, sn error, sn list)
+{
+    int i;
+    char *s = list.s;
+
+    if(list.n == 0) {
+        sn_initz(type,     "");
+        sn_initz(cloud,    "");
+        sn_initz(device,   "");
+        sn_initz(upload,   "");
+        sn_initz(download, "");
+        if(gc->callback.traffic) gc->callback.traffic(gc, error, type, cloud,
+                                                      device, upload, download);
+        return;
+    }
+
+    for(i = 0; ; ) {
+#define PT(m_dst)\
+        if(i >= list.n) break;\
+        sn m_dst = { .n = *(int *)(s + i), .s = s + i + sizeof(int) };\
+        gc_swap_memory((void *)&m_dst.n, sizeof(m_dst.n));\
+        i += sizeof(int) + m_dst.n;
+
+        PT(type);
+        PT(cloud);
+        PT(device);
+        PT(upload);
+        PT(download);
+
+        if(gc->callback.traffic) gc->callback.traffic(gc, error, type, cloud,
+                                                      device, upload, download);
     }
 }
 
@@ -252,6 +301,13 @@ static void callback_data(struct gc_s *gc, const void *buffer, const int nbuffer
         break;
         case MESSAGE_TO_SET_REPLY: {
                 hm_log(LOG_TRACE, &gc->log, "Message to acknowledged");
+            }
+        break;
+        case TRAFFIC_GET_REPLY: {
+                parse_traffic(gc,
+                              p.u.traffic_get_reply.error,
+                              p.u.traffic_get_reply.list);
+                gc_force_stop();
             }
         break;
         default:
@@ -366,14 +422,15 @@ static int config_required(struct gc_config_s *cfg)
         return GC_ERROR;
     }
 
-    if(cfg->ntunnels == 0 && cfg->nallowed == 0) {
-        hm_log(LOG_CRIT, cfg->log, "Neither tunnels nor allowed ports specified");
+    if(cfg->ntunnels == 0 && cfg->nallowed == 0 && cfg->action.n == 0) {
+        hm_log(LOG_CRIT, cfg->log, "Neither tunnels, allowed ports nor action specified");
         return GC_ERROR;
     }
 
     if(cfg->ntunnels > 0 && cfg->nallowed > 0) cfg->type = GC_TYPE_HYBRID;
     else if(cfg->ntunnels > 0)                 cfg->type = GC_TYPE_CLIENT;
     else if(cfg->nallowed > 0)                 cfg->type = GC_TYPE_SERVER;
+    else if(cfg->action.n > 0)                 cfg->type = GC_TYPE_ACTION;
     else                                       return GC_ERROR;
 
     return GC_OK;
@@ -425,12 +482,13 @@ struct gc_s *gc_init(struct gc_init_s *init)
     gc->loop                     = init->loop;
     gc->callback.state_changed   = init->callback.state_changed;
     gc->callback.login           = init->callback.login;
+    gc->callback.traffic         = init->callback.traffic;
 
     if(gc_backend_init(gc, &gc->hostname) != GC_OK) {
         return NULL;
     }
 
-    gc->port = init->port > 0 ? init->port : GC_DEFAULT_PORT;
+    gc->port = init->port > 0 ? init->port : GC_ADMIN_PORT;
 
     // Initialize signals
     gc_signals(gc);

@@ -26,6 +26,11 @@
 #define GC_DEFAULT_PORT         17040
 
 /**
+ * @brief Upstream admin port.
+ */
+#define GC_ADMIN_PORT           17041
+
+/**
  * @brief Maximum configured tunnels.
  */
 #define GC_CFG_MAX_TUNNELS     32
@@ -54,7 +59,8 @@ enum gc_state_e {
 enum gc_cfg_type_e {
     GC_TYPE_HYBRID,         /**< Both server and client type. */
     GC_TYPE_SERVER,         /**< Instance only accepts incoming connections. */
-    GC_TYPE_CLIENT          /**< Instance only establishes tunnels to other GC instances. */
+    GC_TYPE_CLIENT,         /**< Instance only establishes tunnels to other GC instances. */
+    GC_TYPE_ACTION          /**< Instance to perform single action. */
 };
 
 /**
@@ -77,6 +83,8 @@ struct gc_config_s {
     sn username;                                        /**< Login username. */
     sn password;                                        /**< Login password. */
     sn device;                                          /**< Login device. */
+
+    sn action;                                          /**< User action. */
 
     int ntunnels;                                       /**< Number of tunnels. */
     struct gc_config_tunnel_s tunnels[GC_CFG_MAX_TUNNELS];  /**< Array of tunnels. */
@@ -118,10 +126,13 @@ struct gc_init_s {
     const char     *cfgfile;                            /**< Configuration file. */
     const char     *logfile;                            /**< Log file. */
     enum loglevel_e loglevel;                           /**< Log level. */
+    int             traffic;                            /**< Traffic command. */
 
     struct {
         void (*state_changed)(struct gc_s *gc, enum gc_state_e state);       /**< Upstream socket state cb. */
         void (*login)(struct gc_s *gc, sn error);                            /**< Login callback. */
+        void (*traffic)(struct gc_s *gc, sn error, sn type, sn cloud,
+                        sn device, sn upload, sn download);                  /**< Traffic callback. */
     } callback;
 };
 
@@ -147,6 +158,8 @@ struct gc_s {
     struct {
         void (*state_changed)(struct gc_s *gc, enum gc_state_e state);       /**< Upstream socket state cb. */
         void (*login)(struct gc_s *gc, sn error);                            /**< Login callback. */
+        void (*traffic)(struct gc_s *gc, sn error, sn type, sn cloud,
+                        sn device, sn upload, sn download);                  /**< Traffic callback. */
     } callback;
 };
 
