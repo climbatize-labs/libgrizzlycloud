@@ -195,7 +195,6 @@ static void client_logged(struct gc_s *gc, sn error)
 
     if(sn_cmps(ok, error)) {
         sn_initz(traffic, "traffic");
-        sn_initz(action, "action");
         if(sn_cmps(gc->config.action, traffic)) {
             traffic_mi(gc);
         } else {
@@ -307,6 +306,11 @@ static void callback_data(struct gc_s *gc, const void *buffer, const int nbuffer
                 parse_traffic(gc,
                               p.u.traffic_get_reply.error,
                               p.u.traffic_get_reply.list);
+                gc_force_stop();
+            }
+        break;
+        case ACCOUNT_SET_REPLY: {
+                if(gc->callback.account) gc->callback.account(gc, p.u.account_set_reply.error);
                 gc_force_stop();
             }
         break;
@@ -483,12 +487,13 @@ struct gc_s *gc_init(struct gc_init_s *init)
     gc->callback.state_changed   = init->callback.state_changed;
     gc->callback.login           = init->callback.login;
     gc->callback.traffic         = init->callback.traffic;
+    gc->callback.account         = init->callback.account;
 
     if(gc_backend_init(gc, &gc->hostname) != GC_OK) {
         return NULL;
     }
 
-    gc->port = init->port > 0 ? init->port : GC_ADMIN_PORT;
+    gc->port = init->port > 0 ? init->port : GC_DEFAULT_PORT;
 
     // Initialize signals
     gc_signals(gc);
@@ -512,7 +517,6 @@ struct gc_s *gc_init(struct gc_init_s *init)
 
     return gc;
 }
-
 
 static void gc_config_free(struct hm_pool_s *pool, struct gc_config_s *cfg)
 {

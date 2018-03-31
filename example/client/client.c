@@ -1,5 +1,10 @@
 #include <gc.h>
 
+static void callback_account(struct gc_s *gc, sn error)
+{
+    hm_log(LOG_DEBUG, &gc->log, "Account set: [%.*s]", sn_p(error));
+}
+
 static void callback_traffic(struct gc_s *gc, sn error, sn type, sn cloud,
                              sn device, sn upload, sn download)
 {
@@ -15,6 +20,20 @@ static void callback_traffic(struct gc_s *gc, sn error, sn type, sn cloud,
 static void callback_login(struct gc_s *gc, sn error)
 {
     hm_log(LOG_DEBUG, &gc->log, "Login error: [%.*s]", sn_p(error));
+}
+
+static void client_account_create(struct gc_s *gc)
+{
+    struct proto_s as = { .type = ACCOUNT_SET };
+    sn_set(as.u.account_set.email,    gc->config.username);
+    sn_set(as.u.account_set.password, gc->config.password);
+
+    hm_log(LOG_DEBUG, &gc->log, "Sending account set for username [%.*s]",
+                                sn_p(gc->config.username));
+
+    int ret;
+    ret = gc_packet_send(gc, &as);
+    if(ret != GC_OK) CALLBACK_ERROR(&gc->log, "client_account_set");
 }
 
 static void client_login(struct gc_s *gc)
@@ -37,7 +56,12 @@ static void callback_state_changed(struct gc_s *gc, enum gc_state_e state)
     switch(state) {
         case GC_HANDSHAKE_SUCCESS: {
             hm_log(LOG_TRACE, &gc->log, "Connected to upstream");
-            client_login(gc);
+            sn_initz(account_create, "account_create");
+            if(sn_cmps(gc->config.action, account_create)) {
+                client_account_create(gc);
+            } else {
+                client_login(gc);
+            }
         }
         break;
 
@@ -158,6 +182,7 @@ int main(int argc, char **argv)
     gci.callback.state_changed = callback_state_changed;
     gci.callback.login         = callback_login;
     gci.callback.traffic       = callback_traffic;
+    gci.callback.account       = callback_account;
     gci.traffic                = traffic == 1 ? 1 : 0;
 
     gc = gc_init(&gci);
