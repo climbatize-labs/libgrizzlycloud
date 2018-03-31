@@ -298,7 +298,7 @@ int gc_serialize(struct hm_pool_s *pool, sn *dst, struct proto_s *src)
         case ACCOUNT_SET_REPLY:
             if(
                 (sn_memcmp("ok", 2, src->u.account_set_reply.error.s, src->u.account_set_reply.error.n) == 0) ||
-                (sn_memcmp("try_again", 9, src->u.account_set_reply.error.s, src->u.account_set_reply.error.n) == 0) ||
+                (sn_memcmp("denied", 6, src->u.account_set_reply.error.s, src->u.account_set_reply.error.n) == 0) ||
                 (sn_memcmp("already_exists", 14, src->u.account_set_reply.error.s, src->u.account_set_reply.error.n) == 0) ||
                 (sn_memcmp("general_failure", 15, src->u.account_set_reply.error.s, src->u.account_set_reply.error.n) == 0)                 ) {
                     add_intern(pool, dst, src->u.account_set_reply.error.s, src->u.account_set_reply.error.n);
