@@ -173,6 +173,14 @@ int gc_config_parse(struct hm_pool_s *pool, struct gc_config_s *cfg, const char 
             json_object_get_string_len(device));
     }
 
+    struct json_object *action;
+    json_object_object_get_ex(jobj, "action", &action);
+    if(json_object_get_type(action) == json_type_string) {
+        sn_setr(cfg->action,
+            (char *)json_object_get_string(action),
+            json_object_get_string_len(action));
+    }
+
     struct json_object *allow;
     json_object_object_get_ex(jobj, "allow", &allow);
     if(json_object_get_type(allow) == json_type_array) {
