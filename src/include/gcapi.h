@@ -133,7 +133,8 @@ struct gc_init_s {
         void (*login)(struct gc_s *gc, sn error);                            /**< Login callback. */
         void (*traffic)(struct gc_s *gc, sn error, sn type, sn cloud,
                         sn device, sn upload, sn download);                  /**< Traffic callback. */
-        void (*account)(struct gc_s *gc, sn error);                          /**< Account set callback. */
+        void (*account_set)(struct gc_s *gc, sn error);                      /**< Account set callback. */
+        void (*account_exists)(struct gc_s *gc, sn error);                   /**< Account exists callback. */
     } callback;
 };
 
@@ -161,8 +162,8 @@ struct gc_s {
         void (*login)(struct gc_s *gc, sn error);                            /**< Login callback. */
         void (*traffic)(struct gc_s *gc, sn error, sn type, sn cloud,
                         sn device, sn upload, sn download);                  /**< Traffic callback. */
-        void (*account)(struct gc_s *gc, sn error);                          /**< Account set callback. */
-
+        void (*account_set)(struct gc_s *gc, sn error);                      /**< Account set callback. */
+        void (*account_exists)(struct gc_s *gc, sn error);                   /**< Account exists callback. */
     } callback;
 };
 
