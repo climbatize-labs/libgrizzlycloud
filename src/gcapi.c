@@ -500,7 +500,7 @@ struct gc_s *gc_init(struct gc_init_s *init)
         return NULL;
     }
 
-    gc->port = init->port > 0 ? init->port : GC_ADMIN_PORT;
+    gc->port = init->port > 0 ? init->port : GC_DEFAULT_PORT;
 
     // Initialize signals
     gc_signals(gc);
