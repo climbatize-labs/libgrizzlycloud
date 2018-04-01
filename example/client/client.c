@@ -1,8 +1,13 @@
 #include <gc.h>
 
-static void callback_account(struct gc_s *gc, sn error)
+static void callback_account_set(struct gc_s *gc, sn error)
 {
     hm_log(LOG_DEBUG, &gc->log, "Account set: [%.*s]", sn_p(error));
+}
+
+static void callback_account_exists(struct gc_s *gc, sn error)
+{
+    hm_log(LOG_DEBUG, &gc->log, "Account exists: [%.*s]", sn_p(error));
 }
 
 static void callback_traffic(struct gc_s *gc, sn error, sn type, sn cloud,
@@ -36,6 +41,20 @@ static void client_account_create(struct gc_s *gc)
     if(ret != GC_OK) CALLBACK_ERROR(&gc->log, "client_account_set");
 }
 
+static void client_account_exists(struct gc_s *gc)
+{
+    struct proto_s as = { .type = ACCOUNT_EXISTS };
+    sn_set(as.u.account_exists.email,    gc->config.username);
+    sn_set(as.u.account_exists.password, gc->config.password);
+
+    hm_log(LOG_DEBUG, &gc->log, "Sending account exists for username [%.*s]",
+                                sn_p(gc->config.username));
+
+    int ret;
+    ret = gc_packet_send(gc, &as);
+    if(ret != GC_OK) CALLBACK_ERROR(&gc->log, "client_account_exists");
+}
+
 static void client_login(struct gc_s *gc)
 {
     struct proto_s as = { .type = ACCOUNT_LOGIN };
@@ -57,8 +76,11 @@ static void callback_state_changed(struct gc_s *gc, enum gc_state_e state)
         case GC_HANDSHAKE_SUCCESS: {
             hm_log(LOG_TRACE, &gc->log, "Connected to upstream");
             sn_initz(account_create, "account_create");
+            sn_initz(account_exists, "account_exists");
             if(sn_cmps(gc->config.action, account_create)) {
                 client_account_create(gc);
+            } else if(sn_cmps(gc->config.action, account_exists)) {
+                client_account_exists(gc);
             } else {
                 client_login(gc);
             }
@@ -182,7 +204,8 @@ int main(int argc, char **argv)
     gci.callback.state_changed = callback_state_changed;
     gci.callback.login         = callback_login;
     gci.callback.traffic       = callback_traffic;
-    gci.callback.account       = callback_account;
+    gci.callback.account_set   = callback_account_set;
+    gci.callback.account_exists= callback_account_exists;
     gci.traffic                = traffic == 1 ? 1 : 0;
 
     gc = gc_init(&gci);

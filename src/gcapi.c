@@ -310,7 +310,12 @@ static void callback_data(struct gc_s *gc, const void *buffer, const int nbuffer
             }
         break;
         case ACCOUNT_SET_REPLY: {
-                if(gc->callback.account) gc->callback.account(gc, p.u.account_set_reply.error);
+                if(gc->callback.account_set) gc->callback.account_set(gc, p.u.account_set_reply.error);
+                gc_force_stop();
+            }
+        break;
+        case ACCOUNT_EXISTS_REPLY: {
+                if(gc->callback.account_exists) gc->callback.account_exists(gc, p.u.account_exists_reply.error);
                 gc_force_stop();
             }
         break;
@@ -421,8 +426,9 @@ static int config_required(struct gc_config_s *cfg)
 {
     assert(cfg);
 
-    if(cfg->username.n == 0 || cfg->password.n == 0 || cfg->device.n == 0) {
-        hm_log(LOG_CRIT, cfg->log, "Username, password and device must be set");
+    if((cfg->username.n == 0 || cfg->password.n == 0) ||
+        (cfg->device.n == 0 && cfg->action.n == 0)) {
+        hm_log(LOG_CRIT, cfg->log, "Username, password and device or action must be set");
         return GC_ERROR;
     }
 
@@ -487,13 +493,14 @@ struct gc_s *gc_init(struct gc_init_s *init)
     gc->callback.state_changed   = init->callback.state_changed;
     gc->callback.login           = init->callback.login;
     gc->callback.traffic         = init->callback.traffic;
-    gc->callback.account         = init->callback.account;
+    gc->callback.account_set     = init->callback.account_set;
+    gc->callback.account_exists  = init->callback.account_exists;
 
     if(gc_backend_init(gc, &gc->hostname) != GC_OK) {
         return NULL;
     }
 
-    gc->port = init->port > 0 ? init->port : GC_DEFAULT_PORT;
+    gc->port = init->port > 0 ? init->port : GC_ADMIN_PORT;
 
     // Initialize signals
     gc_signals(gc);
