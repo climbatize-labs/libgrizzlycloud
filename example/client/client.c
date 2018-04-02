@@ -13,13 +13,13 @@ static void callback_account_exists(struct gc_s *gc, sn error)
 static void callback_traffic(struct gc_s *gc, sn error, sn type, sn cloud,
                              sn device, sn upload, sn download)
 {
-    hm_log(LOG_DEBUG, &gc->log, "Traffic get: [%.*s:%.*s:%.*s:%.*s:%.*s:%.*s]",
+    hm_log(LOG_DEBUG, &gc->log, "Traffic get: Error [%.*s] Cloud [%.*s] on device: [%.*s] Upload: %.*s Download: %.*s Type: [%.*s]",
                                 sn_p(error),
-                                sn_p(type),
                                 sn_p(cloud),
                                 sn_p(device),
                                 sn_p(upload),
-                                sn_p(download));
+                                sn_p(download),
+                                sn_p(type));
 }
 
 static void callback_login(struct gc_s *gc, sn error)
