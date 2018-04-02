@@ -139,6 +139,7 @@ static void backend_free(struct hm_pool_s *pool, struct backend_s *bnd)
     struct backend_s *host, *del;
 
     for(host = bnd; host != NULL; ) {
+        if(strcmp(host->description, "localhost") == 0) break;
         del = host;
         host = host->next;
         hm_pfree(pool, del);
@@ -148,18 +149,25 @@ static void backend_free(struct hm_pool_s *pool, struct backend_s *bnd)
 int gc_backend_init(struct gc_s *gc, snb *chosen)
 {
     struct backend_s *bnd;
+#ifndef LOCALHOST
     struct backend_seed_s seeds[] = {
         { "93.185.107.138",  "cz01" },
         { "185.101.98.180",  "us01" },
         { "176.126.245.114", "uk01" }
     };
-    /*
-    struct backend_seed_s seeds[] = {
-        { "localhost",  "local" },
-    };
-    */
     bnd = backend_ping(gc, seeds, COUNT(seeds));
-
+#else
+    struct backend_seed_s seeds[] = {
+        { "127.0.0.1",  "localhost" }
+    };
+    struct backend_s seed = { .ip          = "127.0.0.1",
+                              .description = "localhost",
+                              .ping[0]     = 1,
+                              .nping       = 1,
+                              .idx         = 0,
+                              .next        = NULL };
+    bnd = &seed;
+#endif
     if(!bnd) {
         hm_log(LOG_TRACE, &gc->log, "No backend specified");
         return GC_ERROR;
