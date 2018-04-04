@@ -32,6 +32,6 @@ get-deps:
 build-deps:
 	cd deps/openssl/ && ./config -DPURIFY && make
 	cd deps/libev/ && ./configure && make
-	cd deps/libjson-c/ && ./configure && make
+	cd deps/libjson-c/ && libtoolize && aclocal && autoconf && automake --add-missing && ./configure && make
 
 uninstalled: get-deps build-deps all
