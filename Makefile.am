@@ -1,9 +1,8 @@
-#SUBDIRS = src
-
+ACLOCAL_AMFLAGS = -I m4
 AM_CPPFLAGS = -Isrc/include -Ideps/libjson-c -Ideps/openssl/include -Ideps/libev
 
-noinst_LIBRARIES = libgrizzlycloud.a
-libgrizzlycloud_a_SOURCES = \
+lib_LTLIBRARIES = libgrizzlycloud.la
+libgrizzlycloud_la_SOURCES = \
     src/async_client.c \
     src/async_server.c \
     src/backend.c \
@@ -17,9 +16,11 @@ libgrizzlycloud_a_SOURCES = \
     src/tunnel.c \
     src/utils.c
 
+libgrizzlycloud_la_LDFLAGS = -version-info 0:0:0
+
 bin_PROGRAMS = grizzlycloud
 grizzlycloud_SOURCES = example/client/client.c
-grizzlycloud_LDADD = libgrizzlycloud.a \
+grizzlycloud_LDADD = .libs/libgrizzlycloud.a \
             deps/openssl/libssl.a \
             deps/openssl/libcrypto.a \
             deps/libjson-c/.libs/libjson-c.a \
