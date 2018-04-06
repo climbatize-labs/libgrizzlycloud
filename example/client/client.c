@@ -152,17 +152,18 @@ int main(int argc, char **argv)
         printf("  --config <file> - Set configuration file.\n");
         printf("  --log <file>    - Set log file.\n");
         printf("  --nolog         - Redirect all log messages to stdout.\n");
+        printf("  --loglevel      - Default is debug. One of the following:\n");
+        printf("                    trace|debug|info|notice|warning|error|critical|alert|emerg.\n");
         printf("  --daemonize     - Daemonize client.\n");
-        printf("  --traffic       - Get current traffic (Administration only).\n");
         printf("\n");
         exit(1);
     }
 
     const char *config_file = NULL;
     const char *log_file    = NULL;
+    const char *log_level   = "debug";
     int nolog = 0;
     int daemonize = 0;
-    int traffic   = 0;
 
     int i;
     for(i = 0; i < argc; i++) {
@@ -174,8 +175,8 @@ int main(int argc, char **argv)
             nolog = 1;
         else if(strcmp(argv[i], "--daemonize") == 0)
             daemonize = 1;
-        else if(strcmp(argv[i], "--traffic") == 0)
-            traffic = 1;
+        else if(strcmp(argv[i], "--loglevel") == 0 && (i + 1) < argc)
+            log_level = argv[i + 1];
     }
 
     if(config_file == NULL) {
@@ -200,13 +201,21 @@ int main(int argc, char **argv)
     gci.loop                   = ev_default_loop(0);
     gci.cfgfile                = config_file;
     gci.logfile                = log_file;
-    gci.loglevel               = LOG_TRACE;
     gci.callback.state_changed = callback_state_changed;
     gci.callback.login         = callback_login;
     gci.callback.traffic       = callback_traffic;
     gci.callback.account_set   = callback_account_set;
     gci.callback.account_exists= callback_account_exists;
-    gci.traffic                = traffic == 1 ? 1 : 0;
+
+    if(strcmp(log_level,      "trace")   == 0) gci.loglevel = LOG_TRACE;
+    else if(strcmp(log_level, "info")    == 0) gci.loglevel = LOG_INFO;
+    else if(strcmp(log_level, "notice")  == 0) gci.loglevel = LOG_NOTICE;
+    else if(strcmp(log_level, "warning") == 0) gci.loglevel = LOG_WARNING;
+    else if(strcmp(log_level, "error")   == 0) gci.loglevel = LOG_ERR;
+    else if(strcmp(log_level, "crit")    == 0) gci.loglevel = LOG_CRIT;
+    else if(strcmp(log_level, "alert")   == 0) gci.loglevel = LOG_ALERT;
+    else if(strcmp(log_level, "emerg")   == 0) gci.loglevel = LOG_EMERG;
+    else gci.loglevel = LOG_DEBUG;
 
     gc = gc_init(&gci);
     if(gc == NULL) {
