@@ -126,7 +126,6 @@ struct gc_init_s {
     const char     *cfgfile;                            /**< Configuration file. */
     const char     *logfile;                            /**< Log file. */
     enum loglevel_e loglevel;                           /**< Log level. */
-    int             traffic;                            /**< Traffic command. */
 
     struct {
         void (*state_changed)(struct gc_s *gc, enum gc_state_e state);       /**< Upstream socket state cb. */
