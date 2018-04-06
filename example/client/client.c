@@ -153,7 +153,6 @@ int main(int argc, char **argv)
         printf("  --log <file>    - Set log file.\n");
         printf("  --nolog         - Redirect all log messages to stdout.\n");
         printf("  --daemonize     - Daemonize client.\n");
-        printf("  --traffic       - Get current traffic (Administration only).\n");
         printf("\n");
         exit(1);
     }
@@ -162,7 +161,6 @@ int main(int argc, char **argv)
     const char *log_file    = NULL;
     int nolog = 0;
     int daemonize = 0;
-    int traffic   = 0;
 
     int i;
     for(i = 0; i < argc; i++) {
@@ -174,8 +172,6 @@ int main(int argc, char **argv)
             nolog = 1;
         else if(strcmp(argv[i], "--daemonize") == 0)
             daemonize = 1;
-        else if(strcmp(argv[i], "--traffic") == 0)
-            traffic = 1;
     }
 
     if(config_file == NULL) {
@@ -206,7 +202,6 @@ int main(int argc, char **argv)
     gci.callback.traffic       = callback_traffic;
     gci.callback.account_set   = callback_account_set;
     gci.callback.account_exists= callback_account_exists;
-    gci.traffic                = traffic == 1 ? 1 : 0;
 
     gc = gc_init(&gci);
     if(gc == NULL) {
