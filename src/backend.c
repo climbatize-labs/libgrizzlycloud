@@ -20,17 +20,12 @@
 #include <gc.h>
 
 struct backend_s {
-    const char          *ip;
-    const char          *description;
+    sn                  ip;
+    sn                  description;
     int                 ping[8];
     int                 nping;
     int                 idx;
     struct backend_s    *next;
-};
-
-struct backend_seed_s {
-    const char          *ip;
-    const char          *description;
 };
 
 static void parse_ping(char *buffer, int nbuffer, struct backend_s *bnd)
@@ -56,19 +51,35 @@ static void parse_ping(char *buffer, int nbuffer, struct backend_s *bnd)
 }
 
 static struct backend_s *backend_ping(struct gc_s *gcs,
-                                      struct backend_seed_s *seed,
-                                      int amount)
+                                      struct gc_backend_item_s *seed,
+                                      int count, int compare)
 {
     int i;
     struct backend_s *gc, *head = NULL;
 
-    for(i = 0; i < amount; i++) {
+#define GCA(m_ip, m_host, m_idx, m_next)\
+    gc = hm_palloc(gcs->pool, sizeof(*gc));\
+    if(!gc) return NULL;\
+    memset(gc, 0, sizeof(*gc));\
+    sn_set(gc->ip, m_ip);\
+    sn_set(gc->description, m_host);\
+    gc->idx         = m_idx;\
+    gc->next        = m_next;
+
+    if(compare == 0) {
+        GCA(gcs->config.backends.item[0].ip,
+            gcs->config.backends.item[0].hostname,
+            0, NULL)
+        return gc;
+    }
+
+    for(i = 0; i < count; i++) {
         char pcmd[128];
 
 #ifdef __linux__
-        snprintf(pcmd, sizeof(pcmd), "ping -c 3 %s", seed[i].ip);
+        snprintf(pcmd, sizeof(pcmd), "ping -c 3 %.*s", sn_p(seed[i].ip));
 #else
-        snprintf(pcmd, sizeof(pcmd), "ping %s -n 3", seed[i].ip);
+        snprintf(pcmd, sizeof(pcmd), "ping %.*s -n 3", sn_p(seed[i].ip));
 #endif
 
         hm_log(LOG_TRACE, &gcs->log, "Running ping command: [%s]", pcmd);
@@ -81,21 +92,16 @@ static struct backend_s *backend_ping(struct gc_s *gcs,
 
         char buffer[2048];
         memset(buffer, 0, sizeof(buffer));
-        fread(buffer, sizeof(char), sizeof(buffer), t);
+        if(fread(buffer, sizeof(char), sizeof(buffer), t) == 0) {
+            return head;
+        }
 
         pclose(t);
 
-        gc = hm_palloc(gcs->pool, sizeof(*gc));
-        if(!gc) return NULL;
-
-        memset(gc, 0, sizeof(*gc));
-        gc->ip          = seed[i].ip;
-        gc->description = seed[i].description;
-        gc->idx         = i;
+        GCA(seed[i].ip, seed[i].hostname, i, head)
 
         parse_ping(buffer, sizeof(buffer), gc);
 
-        gc->next = head;
         head = gc;
     }
 
@@ -108,19 +114,21 @@ static void backend_dump(struct gc_s *gc, struct backend_s *bnd)
     struct backend_s *host;
 
     for(host = bnd; host != NULL; host = host->next) {
-        hm_log(LOG_TRACE, &gc->log, "IP: [%s]", host->ip);
+        hm_log(LOG_TRACE, &gc->log, "IP: [%.*s]", sn_p(host->ip));
         for(i = 0; i < host->nping; i++) {
             hm_log(LOG_TRACE, &gc->log, "Ping: [%d]", host->ping[i]);
         }
     }
 }
 
-static int backend_choose(struct backend_s *bnd)
+static int backend_choose(struct backend_s *bnd, int compare)
 {
     int i;
     struct backend_s *host;
     int lowest = 999;
     int lowest_idx = -1;
+
+    if(compare == 0) return 0;
 
     for(host = bnd; host != NULL; host = host->next) {
         for(i = 0; i < host->nping; i++) {
@@ -139,7 +147,6 @@ static void backend_free(struct hm_pool_s *pool, struct backend_s *bnd)
     struct backend_s *host, *del;
 
     for(host = bnd; host != NULL; ) {
-        if(strcmp(host->description, "localhost") == 0) break;
         del = host;
         host = host->next;
         hm_pfree(pool, del);
@@ -149,25 +156,10 @@ static void backend_free(struct hm_pool_s *pool, struct backend_s *bnd)
 int gc_backend_init(struct gc_s *gc, snb *chosen)
 {
     struct backend_s *bnd;
-#ifndef LOCALHOST
-    struct backend_seed_s seeds[] = {
-        { "93.185.107.138",  "cz01" },
-        { "185.101.98.180",  "us01" },
-        { "176.126.245.114", "uk01" }
-    };
-    bnd = backend_ping(gc, seeds, COUNT(seeds));
-#else
-    struct backend_seed_s seeds[] = {
-        { "127.0.0.1",  "localhost" }
-    };
-    struct backend_s seed = { .ip          = "127.0.0.1",
-                              .description = "localhost",
-                              .ping[0]     = 1,
-                              .nping       = 1,
-                              .idx         = 0,
-                              .next        = NULL };
-    bnd = &seed;
-#endif
+    bnd = backend_ping(gc, gc->config.backends.item,
+                       gc->config.backends.n,
+                       gc->config.backends.compare);
+
     if(!bnd) {
         hm_log(LOG_TRACE, &gc->log, "No backend specified");
         return GC_ERROR;
@@ -175,13 +167,17 @@ int gc_backend_init(struct gc_s *gc, snb *chosen)
 
     backend_dump(gc, bnd);
 
-    int sel_idx = backend_choose(bnd);
+    int sel_idx = backend_choose(bnd, gc->config.backends.compare);
+
     if(sel_idx != -1) {
-        hm_log(LOG_TRACE, &gc->log, "Selected backend: [%s %s]", seeds[sel_idx].ip,
-                                                                 seeds[sel_idx].description);
-        sn_initz(ip, (char *)seeds[sel_idx].ip);
+        hm_log(LOG_TRACE, &gc->log, "Selected backend: [%.*s %.*s]",
+                                    sn_p(gc->config.backends.item[sel_idx].ip),
+                                    sn_p(gc->config.backends.item[sel_idx].hostname));
+
+        sn_init(ip, gc->config.backends.item[sel_idx].ip);
         snb_cpy_d(chosen, ip);
     } else {
+        backend_free(gc->pool, bnd);
         hm_log(LOG_TRACE, &gc->log, "No backend selected");
         return GC_ERROR;
     }
