@@ -149,12 +149,15 @@ int main(int argc, char **argv)
         printf("\n");
         printf("  GrizzlyCloud - Simplified VPN alternative for IoT\n");
         printf("\n");
-        printf("  --config <file> - Set configuration file.\n");
-        printf("  --log <file>    - Set log file.\n");
-        printf("  --nolog         - Redirect all log messages to stdout.\n");
-        printf("  --loglevel      - Default is debug. One of the following:\n");
-        printf("                    trace|debug|info|notice|warning|error|critical|alert|emerg.\n");
-        printf("  --daemonize     - Daemonize client.\n");
+        printf("  --config <file>    - Set configuration file.\n");
+        printf("  --log <file>       - Set log file.\n");
+        printf("  --nolog            - Redirect all log messages to stdout.\n");
+        printf("  --loglevel <level> - One of the following:\n");
+        printf("                       trace|debug|info|notice|warning|error|critical|alert|emerg.\n");
+        printf("                       Default is debug.\n");
+        printf("  --backends <file>  - Specify list of backend nodes.\n");
+        printf("                       Default is config/backend.cfg.\n");
+        printf("  --daemonize        - Daemonize client.\n");
         printf("\n");
         exit(1);
     }
@@ -162,6 +165,7 @@ int main(int argc, char **argv)
     const char *config_file = NULL;
     const char *log_file    = NULL;
     const char *log_level   = "debug";
+    const char *backends    = "config/backends.cfg";
     int nolog = 0;
     int daemonize = 0;
 
@@ -177,6 +181,8 @@ int main(int argc, char **argv)
             daemonize = 1;
         else if(strcmp(argv[i], "--loglevel") == 0 && (i + 1) < argc)
             log_level = argv[i + 1];
+        else if(strcmp(argv[i], "--backends") == 0 && (i + 1) < argc)
+            backends = argv[i + 1];
     }
 
     if(config_file == NULL) {
@@ -201,6 +207,7 @@ int main(int argc, char **argv)
     gci.loop                   = ev_default_loop(0);
     gci.cfgfile                = config_file;
     gci.logfile                = log_file;
+    gci.backendfile            = backends;
     gci.callback.state_changed = callback_state_changed;
     gci.callback.login         = callback_login;
     gci.callback.traffic       = callback_traffic;

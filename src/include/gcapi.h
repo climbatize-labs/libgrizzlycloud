@@ -41,6 +41,11 @@
 #define GC_CFG_MAX_ALLOW_PORTS 32
 
 /**
+ * @brief Maximum backend nodes.
+ */
+#define GC_CFG_MAX_BACKENDS 32
+
+/**
  * @brief GC state enum.
  *
  * Client's state related to upstream.
@@ -75,6 +80,22 @@ struct gc_config_tunnel_s {
     snb pid;                 /**< Paired process ID. */
 };
 
+struct gc_backend_item_s {
+    sn ip;                   /**< IP address. */
+    sn hostname;             /**< Hostname. */
+};
+
+struct gc_config_backend_s {
+    int n;                                              /**< Number of backends. */
+    struct gc_backend_item_s item[GC_CFG_MAX_BACKENDS]; /**< Array of backends. */
+
+    int compare;                                        /**< Comparisson flag. */
+
+    char file[64];                                      /**< Configuration file path. */
+    struct json_object *jobj;                           /**< Parsed json configuration. */
+    char *content;                                      /**< File buffer. */
+};
+
 /**
  * @brief GC configuration.
  *
@@ -96,11 +117,13 @@ struct gc_config_s {
 
     enum gc_cfg_type_e type;                            /**< Type of configuration. */
 
-    char file[64];                                      /**< Configuration file. */
+    char file[64];                                      /**< Configuration file path. */
 
     struct hm_log_s *log;                               /**< Log stream. */
     struct json_object *jobj;                           /**< Parsed json configuration. */
-    char *content;                                      /**< Configuration buffer. */
+    char *content;                                      /**< File buffer. */
+
+    struct gc_config_backend_s backends;                /**< Backend nodes strcuture. */
 };
 
 /**
@@ -125,6 +148,7 @@ struct gc_init_s {
     struct ev_loop *loop;                               /**< Event loop. */
     const char     *cfgfile;                            /**< Configuration file. */
     const char     *logfile;                            /**< Log file. */
+    const char     *backendfile;                        /**< Backends file. */
     enum loglevel_e loglevel;                           /**< Log level. */
 
     struct {
