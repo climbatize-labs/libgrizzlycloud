@@ -254,13 +254,22 @@ void gc_config_dump(struct gc_config_s *cfg);
 /**
  * @brief Parse config file.
  *
- * Read @p path and fill @p cfg.
  * @param pool Pool structure
  * @param cfg Config structure
  * @param path Path to filename
  * @return GC_OK on success, GC_ERROR on failure
  */
 int gc_config_parse(struct hm_pool_s *pool, struct gc_config_s *cfg, const char *path);
+
+/**
+ * @brief Parse backends config file.
+ *
+ * @param pool Pool structure
+ * @param cfg Config structure
+ * @param path Path to filename
+ * @return GC_OK on success, GC_ERROR on failure
+ */
+int gc_backend_parse(struct hm_pool_s *pool, struct gc_config_s *cfg, const char *path);
 
 /**
  * @brief Send packet to upstream.

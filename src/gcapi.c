@@ -406,13 +406,20 @@ static void gc_signals(struct gc_s *gc)
     }
 }
 
-static int config_init(struct hm_pool_s *pool, struct gc_config_s *cfg, const char *filename)
+static int config_init(struct hm_pool_s *pool, struct gc_config_s *cfg,
+                       const char *cfgfile, const char *backendfile)
 {
     int ret;
 
-    ret = gc_config_parse(pool, cfg, filename);
+    ret = gc_config_parse(pool, cfg, cfgfile);
     if(ret != GC_OK) {
-        hm_log(LOG_CRIT, cfg->log, "Parsing config file [%s] failed", filename);
+        hm_log(LOG_CRIT, cfg->log, "Parsing config file [%s] failed", cfgfile);
+        return GC_ERROR;
+    }
+
+    ret = gc_backend_parse(pool, cfg, backendfile);
+    if(ret != GC_OK) {
+        hm_log(LOG_CRIT, cfg->log, "Parsing backend file [%s] failed", backendfile);
         return GC_ERROR;
     }
 
@@ -478,7 +485,7 @@ struct gc_s *gc_init(struct gc_init_s *init)
                                                           EV_VERSION_MINOR);
 
     gc->config.log = &gc->log;
-    if(config_init(gc->pool, &gc->config, init->cfgfile) != GC_OK) {
+    if(config_init(gc->pool, &gc->config, init->cfgfile, init->backendfile) != GC_OK) {
         hm_log(LOG_CRIT, &gc->log, "Could not initialize config file");
         return NULL;
     }
@@ -529,7 +536,9 @@ static void gc_config_free(struct hm_pool_s *pool, struct gc_config_s *cfg)
 {
     ev_timer_stop(gclocal->loop, &cfg->pair_timer);
     json_object_put(cfg->jobj);
+    json_object_put(cfg->backends.jobj);
     hm_pfree(pool, cfg->content);
+    hm_pfree(pool, cfg->backends.content);
 }
 
 static void stop(struct ev_loop *loop, struct ev_timer *timer, int revents)
