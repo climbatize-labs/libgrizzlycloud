@@ -124,6 +124,65 @@ int gc_parse_delimiter(struct hm_pool_s *pool, sn input, char ***argv,
     return GC_OK;
 }
 
+int gc_backend_parse(struct hm_pool_s *pool, struct gc_config_s *cfg, const char *path)
+{
+    char *content;
+    int n;
+
+    assert(cfg);
+
+    n = gc_fread(pool, &content, path);
+    if(n <= 1) {
+        return GC_ERROR;
+    }
+
+    // Trim long paths up to sizeof(cfg->file) bytes
+    snprintf(cfg->backends.file, sizeof(cfg->backends.file), "%s", path);
+
+    struct json_tokener *tok = json_tokener_new();
+    struct json_object *jobj = json_tokener_parse_ex(tok, content, n);
+    json_tokener_free(tok);
+
+    if(jobj == NULL) {
+        return GC_ERROR;
+    }
+
+    struct json_object *backends;
+    json_object_object_get_ex(jobj, "backends", &backends);
+    if(json_object_get_type(backends) == json_type_array) {
+        array_list *backends_array = json_object_get_array(backends);
+
+        int i;
+        for(i = 0; i < array_list_length(backends_array); i++) {
+            struct json_object *backend = array_list_get_idx(backends_array, i);
+            struct json_object *b_ip, *b_host;
+
+#define BND(m_dst, m_name, m_src)\
+        json_object_object_get_ex(backend, m_name, &m_src);\
+        sn_setr(m_dst,\
+                (char *)json_object_get_string(m_src),\
+                json_object_get_string_len(m_src));
+
+            BND(cfg->backends.item[i].ip,       "ip",       b_ip)
+            BND(cfg->backends.item[i].hostname, "hostname", b_host)
+
+            cfg->backends.n++;
+        }
+    }
+
+#define BND_INT(m_dst, m_name, m_src)\
+        json_object_object_get_ex(jobj, m_name, &m_src);\
+        m_dst = json_object_get_int(m_src);
+
+    struct json_object *b_compare;
+    BND_INT(cfg->backends.compare,       "compare",      b_compare)
+
+    cfg->backends.jobj = jobj;
+    cfg->backends.content = content;
+
+    return GC_OK;
+}
+
 int gc_config_parse(struct hm_pool_s *pool, struct gc_config_s *cfg, const char *path)
 {
     char *content;
@@ -256,6 +315,16 @@ void gc_config_dump(struct gc_config_s *cfg)
                                     cfg->tunnels[i].port,
                                     cfg->tunnels[i].port_local);
     }
+
+    hm_log(LOG_DEBUG, cfg->log, "Backends total: [%d]", cfg->backends.n);
+
+    for(i = 0; i < cfg->backends.n; i++) {
+        hm_log(LOG_DEBUG, cfg->log, "Backend IP: [%.*s] Hostname: [%.*s]",
+                                    sn_p(cfg->backends.item[i].ip),
+                                    sn_p(cfg->backends.item[i].hostname));
+    }
+
+    hm_log(LOG_DEBUG, cfg->log, "Backends compare: [%d]", cfg->backends.compare);
 
     hm_log(LOG_DEBUG, cfg->log, "Config dump ended");
 }
