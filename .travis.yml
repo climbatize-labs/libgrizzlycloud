@@ -1,12 +1,12 @@
 language: c
 
-sudo: false
+sudo: true
 
 addons:
     apt:
         sources:
             - ubuntu-toolchain-r-test
-
+            - iputils-ping
 compiler:
     - gcc
 
@@ -14,3 +14,5 @@ script:
     - ./autogen.sh
     - ./configure
     - make uninstalled
+    - bash test/ssh.sh
+    - bash test/ci/001/test.sh
