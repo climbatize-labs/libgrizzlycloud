@@ -50,7 +50,7 @@ int gc_tunnel_response(struct gc_s *gc, struct proto_s *p, char **argv, int argc
     sn_initr(port, argv[1], strlen(argv[1]));
     sn_initr(fd,   argv[2], strlen(argv[2]));
 
-    hm_log(LOG_TRACE, &gc->log, "Tunnel response [port:fd] [%.*s:%*s]",
+    hm_log(LOG_TRACE, &gc->log, "Tunnel response [port:fd] [%.*s:%.*s]",
                                 sn_p(port),
                                 sn_p(fd));
 
@@ -153,8 +153,8 @@ int gc_tunnel_add(struct gc_s *gc, struct gc_device_pair_s *pair, sn type)
     t->server = c;
     if(c) c->tunnel = t;
 
-    if(tunnels) tunnels->next = t;
-    else        tunnels       = t;
+    t->next = tunnels;
+    tunnels = t;
 
     return GC_OK;
 }
