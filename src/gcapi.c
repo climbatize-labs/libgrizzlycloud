@@ -127,6 +127,7 @@ static void callback_error(struct gc_gen_client_ssl_s *c, enum gcerr_e error)
 static void device_pair_reply(struct gc_s *gc, struct gc_device_pair_s *pair)
 {
     if(gc_tunnel_add(gc, pair, pair->type) != GC_OK) {
+        gc_force_stop();
         return;
     }
 

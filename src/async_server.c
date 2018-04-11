@@ -346,22 +346,23 @@ int async_server(struct gc_gen_server_s *cs, struct gc_s *gc)
         return GC_ERROR;
     }
 
-#ifdef SO_REUSEADDR
-    int t = 1;
-    setsockopt(cs->fd, SOL_SOCKET, SO_REUSEADDR, &t, sizeof(int));
+#ifdef GC_SO_REUSEADDR
+    int reuseaddr = 1;
+    setsockopt(cs->fd, SOL_SOCKET, SO_REUSEADDR, &reuseaddr, sizeof(reuseaddr));
 #endif
-#ifdef SO_REUSEPORT
-    setsockopt(cs->fd, SOL_SOCKET, SO_REUSEPORT, &t, sizeof(int));
+#ifdef GC_SO_REUSEPORT
+    int reuseport = 1;
+    setsockopt(cs->fd, SOL_SOCKET, SO_REUSEPORT, &reuseport, sizeof(reuseport));
 #endif
 
     if(bind(cs->fd, ai->ai_addr, ai->ai_addrlen)) {
-        hm_log(LOG_CRIT, cs->log, "Server bind() failed");
+        hm_log(LOG_CRIT, cs->log, "Server bind() failed [%s:%s]", cs->host, cs->port);
         return GC_ERROR;
     }
 
-#if TCP_DEFER_ACCEPT
+#ifdef GC_TCP_DEFER_ACCEPT
     int timeout = 1;
-    setsockopt(cs->fd, IPPROTO_TCP, TCP_DEFER_ACCEPT, &timeout, sizeof(int));
+    setsockopt(cs->fd, IPPROTO_TCP, TCP_DEFER_ACCEPT, &timeout, sizeof(timeout));
 #endif
 
     freeaddrinfo(ai);
