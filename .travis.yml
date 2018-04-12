@@ -2,12 +2,16 @@ language: c
 
 sudo: true
 
+before_install:
+    - sudo apt-get update -qq
+    - sudo apt-get install -qq valgrind
+
 addons:
     apt:
         sources:
             - ubuntu-toolchain-r-test
             - iputils-ping
-            - valgrind
+
 compiler:
     - gcc
 
