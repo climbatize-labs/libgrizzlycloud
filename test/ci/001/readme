@@ -1,0 +1,9 @@
+CI test 001
+
+Summary: Create 2 instances. First instance plays role of a server and allows incoming connections on port 22. Another instance opens two tunnels to server on ports 8888 and 8889. Afterwards, small file of 512kb is copied over from server to client. Integrity of a received files is verified by calculating their checksums. Also valgrind log output is checked to see if any errors are present.
+
+Files:
+- test.sh    - testing scenario
+- client.cfg - client configuration
+- server.cfg - server configuration
+- backend*   - backend files
