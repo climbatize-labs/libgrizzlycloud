@@ -1,0 +1,83 @@
+#!/bin/bash
+
+# $1 - config file
+# $2 - backends file
+gc_start()
+{
+    valgrind --log-file=$1.vglog ./grizzlycloud --nolog --config $1 --backends $2 --loglevel trace &
+}
+
+gc_stop()
+{
+    ps -ef | grep "valgrind" | grep -v grep | awk '{print $2}' | xargs kill -15
+}
+
+# $1 - closed vg log file
+gc_check_vg()
+{
+    e1=`grep -i -e "definitely lost: 0 bytes" $1`
+    e2=`grep -i -e "indirectly lost: 0 bytes" $1`
+    e3=`grep -i -e "possibly lost: 0 bytes" $1`
+    e4=`grep -i -e "error summary: 0 errors from 0 contexts" $1`
+
+    if [ ${#e1} -eq 0 ] || [ ${#e2} -eq 0 ] ||
+       [ ${#e3} -eq 0 ] || [ ${#e4} -eq 0 ]; then
+        echo 1
+    else
+        echo 0
+    fi
+}
+
+# $1 - src file
+# $2 - dst file
+gc_checksums()
+{
+    if [ "$#" -ne 2 ]; then
+        echo 1
+    fi
+
+    f=`md5sum $1`
+    g=`md5sum $2`
+
+    if [ ${f:0:32} == ${g:0:32} ]; then
+        echo 0
+    else
+        echo 1
+    fi
+}
+
+# $1 - file to check
+gc_check_for_file()
+{
+    f=1
+    for i in `seq 1 30`;
+    do
+        if [ ! -f $1 ]; then
+            sleep 1
+            continue
+        fi
+
+        f=0
+        break
+    done
+
+    echo $f
+}
+
+# $1 - src file
+# $2 - dst file
+gc_files_cmp()
+{
+    if [ $(gc_check_for_file $1) -eq 0 ]; then
+        if [ $(gc_checksums $1 $2) -eq 0 ]; then
+            # match
+            echo 0
+        else
+            # mismatch
+            echo 1
+        fi
+    else
+        # file doesn't exist
+        echo 2
+    fi
+}
