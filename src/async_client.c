@@ -203,7 +203,11 @@ SSL_CTX *make_ctx()
     ssloptions |= SSL_OP_NO_COMPRESSION;
 #endif
 
+#if (OPENSSL_VERSION_NUMBER <= 0x100020ffL)
     ctx = SSL_CTX_new(TLSv1_client_method());
+#else
+    ctx = SSL_CTX_new(TLS_client_method());
+#endif
 
     SSL_CTX_set_options(ctx, ssloptions);
 
@@ -250,10 +254,12 @@ static void end_handshake(struct gc_gen_client_ssl_s *c)
     ev_io_stop(c->base.loop, &c->ev_r_handshake);
     ev_io_stop(c->base.loop, &c->ev_w_handshake);
 
+#if (OPENSSL_VERSION_NUMBER <= 0x100020ffL)
     /* Disable renegotiation (CVE-2009-3555) */
     if(c->ssl->s3) {
         c->ssl->s3->flags |= SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS;
     }
+#endif
 
     c->base.flags |= GC_HANDSHAKED;
 
@@ -290,8 +296,10 @@ static void client_handshake(struct ev_loop *loop, ev_io *w, int revents)
             ev_io_start(loop, &c->ev_w_handshake);
         } else if(err == SSL_ERROR_ZERO_RETURN) {
             printf("Connection closed (in handshake)\n");
+            exit(1);
         } else {
             printf("Unexpected SSL error (in handshake): %d\n", err);
+            exit(1);
         }
     }
 }

@@ -1,57 +1,60 @@
-checksums()
-{
-    if [ "$#" -ne 2 ]; then
-        echo 'Please, specify two files to compare'
-        exit 1
-    fi
+#!/bin/bash
 
-    f=`md5sum $1`
-    g=`md5sum $2`
-
-    if [ ${f:0:32} == ${g:0:32} ]; then
-        echo "Test passed"
-        exit 0
-    else
-        echo "Checksum failed"
-        exit 1
-    fi
-}
-
-check_for_file()
-{
-    for i in `seq 1 30`;
-    do
-        if [ ! -f $1 ]; then
-            sleep 1
-            continue
-        fi
-        checksums $1 $2
-    done
-
-    echo "Test timedout"
-    exit 1
-}
+source test/gc_common
 
 FILE="file.bin"
 DIR="test/ci/001"
+ports=( 8888 8889 )
 
-./grizzlycloud --nolog --config $DIR/server.cfg --loglevel trace &
-./grizzlycloud --nolog --config $DIR/client.cfg --loglevel trace &
+# Start server connected to US node
+gc_start $DIR/server.cfg $DIR/backend_us.cfg
+# Start client connected to UK node
+gc_start $DIR/client.cfg $DIR/backend_uk.cfg
 
-# create dst directories
+# Create dst directories
 echo 'Creating port directories'
-mkdir -p $DIR/8888
+for p in ${ports[@]}; do
+    mkdir -p $DIR/$p
+done
 
-# create file to dowload
+# Create file to dowload
 dd if=/dev/zero of=$DIR/$FILE bs=1024 count=512
 
-# wait for gc to start up
+# Wait for gc to start up
 echo 'Waiting for GC to start up'
 sleep 20
 
-# create file copies
+# Create file copies
 echo 'Copying files..'
 PWD=`pwd`
-scp -o "StrictHostKeyChecking no" -P 8888 localhost:$PWD/$DIR/$FILE $DIR/8888/
+for p in ${ports[@]}; do
+    scp -o "StrictHostKeyChecking no" -P $p localhost:$PWD/$DIR/$FILE $DIR/$p/
+done
 
-check_for_file $DIR/8888/$FILE $DIR/$FILE
+# Final checksums
+DST=$DIR/$FILE
+for p in ${ports[@]}; do
+    c1=$(gc_files_cmp $DIR/$p/$FILE $DST)
+    echo "Checksums of $DIR/$p/$FILE and $DST, error: $c1"
+    if [ $c1 -ne 0 ]; then
+        exit 1
+    fi
+done
+
+gc_stop
+
+sleep 2
+
+cat $DIR/server.cfg.vglog
+cat $DIR/client.cfg.vglog
+
+# Valgrind logs test
+#if [ $(gc_check_vg $DIR/server.cfg.vglog) -ne 0 ]; then
+#    echo "VG log server check failed"
+#    exit 1
+#fi
+
+#if [ $(gc_check_vg $DIR/client.cfg.vglog) -ne 0 ]; then
+#    echo "VG log client check failed"
+#    exit 1
+#fi
