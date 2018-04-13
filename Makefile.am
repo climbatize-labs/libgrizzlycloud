@@ -25,7 +25,7 @@ grizzlycloud_LDADD = .libs/libgrizzlycloud.a \
             deps/openssl/libcrypto.a \
             deps/libjson-c/.libs/libjson-c.a \
             deps/libev/.libs/libev.a \
-            -ldl -lm
+            -lpthread -ldl -lm
 
 get-deps:
 	git submodule update --init --recursive
