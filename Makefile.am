@@ -31,8 +31,8 @@ get-deps:
 	git submodule update --init --recursive
 
 build-deps:
-	cd deps/openssl/ && ./config -DPURIFY && make
-	cd deps/libev/ && ./configure && make
-	cd deps/libjson-c/ && libtoolize && aclocal && autoconf && automake --add-missing && ./configure && make
+	cd deps/openssl/ && ./config -d -DPURIFY && make
+	cd deps/libev/ && ./configure -d && make
+	cd deps/libjson-c/ && libtoolize && aclocal && autoconf && automake --add-missing && ./configure -d && make
 
 uninstalled: get-deps build-deps all
