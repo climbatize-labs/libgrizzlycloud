@@ -360,7 +360,9 @@ void gc_deinit(struct gc_s *gc)
     CONF_modules_unload(1);
     EVP_cleanup();
     CRYPTO_cleanup_all_ex_data();
+#if (OPENSSL_VERSION_NUMBER <= 0x100020ffL)
     ERR_remove_state(0);
+#endif
     ERR_free_strings();
 
     struct hm_pool_s *pool = gc->pool;
