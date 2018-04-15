@@ -28,6 +28,7 @@ static struct gc_gen_client_s *tunnel_client_find(sn port, sn fd)
 
     for(t = tunnels; t != NULL; t = t->next) {
         if(!sn_cmps(t->port_remote, port)) continue;
+        if(!(t->server && t->server->clients)) continue;
 
         char key[16];
         snprintf(key, sizeof(key), "%.*s", sn_p(fd));
