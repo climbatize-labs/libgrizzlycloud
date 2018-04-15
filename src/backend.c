@@ -76,7 +76,7 @@ static struct backend_s *backend_ping(struct gc_s *gcs,
     for(i = 0; i < count; i++) {
         char pcmd[128];
 
-#ifdef __linux__
+#if defined(__linux__) || defined(__APPLE__)
         snprintf(pcmd, sizeof(pcmd), "ping -c 3 %.*s", sn_p(seed[i].ip));
 #else
         snprintf(pcmd, sizeof(pcmd), "ping %.*s -n 3", sn_p(seed[i].ip));

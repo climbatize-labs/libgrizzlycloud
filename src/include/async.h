@@ -20,6 +20,10 @@
 #ifndef GC_ASYNC_H_
 #define GC_ASYNC_H_
 
+#ifndef MSG_NOSIGNAL
+#define MSG_NOSIGNAL 0
+#endif
+
 #define GC_DEFAULT_BACKLOG  8
 
 /**
