@@ -168,7 +168,6 @@ static void async_write_ssl(struct ev_loop *loop, ev_io *w, int revents)
     /*
        EAGAIN or EWOULDBLOCK The socket is marked nonblocking and the receive operation would block, or a receive timeout had been set and the timeout expired before data was received.
      */
-    if(t == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) abort(); //goto again;
 
     if(t > 0) {
         gc_ringbuffer_send_skip(c->base.pool, &c->base.rb, t);
@@ -179,6 +178,10 @@ static void async_write_ssl(struct ev_loop *loop, ev_io *w, int revents)
                 c->callback.terminate = NULL;
             }
         }
+    } else if(t == -1 &&
+        (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) {
+        hm_log(LOG_TRACE, c->base.log, "Socket read EAGAIN|EWOULDBLOCK|EINTR");
+        async_handle_socket_errno(c->base.log);
     } else {
         if(c->callback.terminate) {
             c->callback.terminate(c, GC_WRITE_ERR);
@@ -245,7 +248,8 @@ static void handle_connect(struct ev_loop *loop, ev_io *w, int revents)
         /* do nothing, we'll get phoned home again... */
     }
     else {
-        printf("Error: {backend-connect}");
+        hm_log(LOG_CRIT, c->base.log, "Backend connection failed");
+        exit(1);
     }
 }
 
@@ -295,10 +299,10 @@ static void client_handshake(struct ev_loop *loop, ev_io *w, int revents)
             ev_io_stop(loop, &c->ev_r_handshake);
             ev_io_start(loop, &c->ev_w_handshake);
         } else if(err == SSL_ERROR_ZERO_RETURN) {
-            printf("Connection closed (in handshake)\n");
+            hm_log(LOG_DEBUG, c->base.log, "Connection closed (in handshake)");
             exit(1);
         } else {
-            printf("Unexpected SSL error (in handshake): %d\n", err);
+            hm_log(LOG_DEBUG, c->base.log, "Unexpected SSL error (in handshake): %d", err);
             exit(1);
         }
     }
@@ -347,7 +351,7 @@ int async_client_ssl(struct gc_s *gc)
     client->servaddr.sin_addr.s_addr = inet_addr(ip);
     client->servaddr.sin_port = htons(client->base.net.port);
 
-    client->base.fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+    client->base.fd = socket(AF_INET, SOCK_STREAM, 0);
     if(client->base.fd == -1) {
         hm_log(LOG_CRIT, client->base.log, "Socket() ssl initialization failed");
         return GC_ERROR;
@@ -356,6 +360,11 @@ int async_client_ssl(struct gc_s *gc)
     int ret = gc_fd_setkeepalive(client->base.fd);
     if(ret != GC_OK) {
         hm_log(LOG_TRACE, client->base.log, "Failed to set keepalive() on fd %d", client->base.fd);
+    }
+
+    ret = gc_fd_setnonblock(client->base.fd);
+    if(ret != GC_OK) {
+        hm_log(LOG_TRACE, client->base.log, "Failed to set nonblock() on fd %d", client->base.fd);
     }
 
     long mode = SSL_MODE_ENABLE_PARTIAL_WRITE;
@@ -393,7 +402,6 @@ int async_client_ssl(struct gc_s *gc)
        && errno != EINPROGRESS && errno != EINTR) {
 
         async_client_ssl_shutdown(client);
-        printf("Connect() errno: %d\n", errno);
         return GC_ERROR;
     }
 
@@ -459,7 +467,7 @@ static void async_read(struct ev_loop *loop, ev_io *w, int revents)
         if(c->callback.error) {
             c->callback.error(c, GC_READZERO_ERR);
         }
-     } else if(sz == -1 &&
+    } else if(sz == -1 &&
         (errno == EAGAIN || errno == EWOULDBLOCK || errno == EINTR)) {
         hm_log(LOG_TRACE, c->base.log, "Socket read EAGAIN|EWOULDBLOCK|EINTR");
         async_handle_socket_errno(c->base.log);
@@ -523,7 +531,7 @@ int async_client(struct gc_gen_client_s *client)
 
     assert(client);
 
-    client->base.fd = socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0);
+    client->base.fd = socket(AF_INET, SOCK_STREAM, 0);
     if(client->base.fd == -1) {
         hm_log(LOG_ERR, client->base.log, "{Connector}: client init socket error: %d", errno);
         client->callback.error(client, GC_SOCKET_ERR);
@@ -535,6 +543,11 @@ int async_client(struct gc_gen_client_s *client)
     int ret = gc_fd_setkeepalive(client->base.fd);
     if(ret != GC_OK) {
         hm_log(LOG_TRACE, client->base.log, "Failed to set keepalive() on fd %d", client->base.fd);
+    }
+
+    ret = gc_fd_setnonblock(client->base.fd);
+    if(ret != GC_OK) {
+        hm_log(LOG_TRACE, client->base.log, "Failed to set nonblock() on fd %d", client->base.fd);
     }
 
     memset(&servaddr, 0, sizeof(servaddr));

@@ -261,7 +261,7 @@ static void server_async_client(struct ev_loop *loop, ev_io *w, int revents)
 
     ret = gc_fd_setnonblock(client);
     if(ret != GC_OK) {
-        hm_log(LOG_TRACE, cs->log, "Failed to set noblock() on fd %d", client);
+        hm_log(LOG_TRACE, cs->log, "Failed to set nonblock() on fd %d", client);
     }
 
     ret = gc_fd_setkeepalive(client);
@@ -340,10 +340,15 @@ int async_server(struct gc_gen_server_s *cs, struct gc_s *gc)
         return GC_ERROR;
     }
 
-    cs->fd = socket(ai->ai_family, SOCK_STREAM | SOCK_NONBLOCK, IPPROTO_TCP);
+    cs->fd = socket(ai->ai_family, SOCK_STREAM, IPPROTO_TCP);
     if(cs->fd == -1) {
         hm_log(LOG_CRIT, cs->log, "Server socket() initialization failed");
         return GC_ERROR;
+    }
+
+    int ret = gc_fd_setnonblock(cs->fd);
+    if(ret != GC_OK) {
+        hm_log(LOG_TRACE, cs->log, "Failed to set nonblock() on fd %d", cs->fd);
     }
 
 #ifdef GC_SO_REUSEADDR
