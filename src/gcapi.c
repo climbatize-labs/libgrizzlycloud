@@ -131,6 +131,11 @@ static void device_pair_reply(struct gc_s *gc, struct gc_device_pair_s *pair)
         return;
     }
 
+    sn_initz(forced, "forced");
+    if(sn_cmps(pair->type, forced)) {
+        return;
+    }
+
     int i;
     for(i = 0; i < gc->config.ntunnels; i++) {
         sn_itoa(port,       gc->config.tunnels[i].port, 8);
