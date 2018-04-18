@@ -10,11 +10,13 @@ libgrizzlycloud_la_SOURCES = \
     src/gcapi.c \
     src/hashtable.c \
     src/log.c \
+    src/module.c \
     src/pool.c \
     src/proto.c \
     src/ringbuffer.c \
     src/tunnel.c \
-    src/utils.c
+    src/utils.c \
+    src/modules/mod_phillipshue.c
 
 libgrizzlycloud_la_LDFLAGS = -version-info 0:0:0
 
@@ -25,7 +27,7 @@ grizzlycloud_LDADD = .libs/libgrizzlycloud.a \
             deps/openssl/libcrypto.a \
             deps/libjson-c/.libs/libjson-c.a \
             deps/libev/.libs/libev.a \
-            -lpthread -ldl -lm
+            -lpthread -ldl -lm -lcurl
 
 get-deps:
 	git submodule update --init --recursive

@@ -194,6 +194,28 @@ static void devices_pair(struct ev_loop *loop, struct ev_timer *timer, int reven
     }
 }
 
+static void modules_stop(struct gc_s *gc)
+{
+    int i;
+    for(i = 0; i < MAX_MODULES; i++) {
+        if(modules_available[i]->stop)
+            modules_available[i]->stop(gc, modules_available[i]);
+    }
+}
+
+static enum gc_e modules_start(struct gc_s *gc)
+{
+    int i;
+    for(i = 0; i < MAX_MODULES; i++) {
+        if((gc->modules & modules_available[i]->id) &&
+            modules_available[i]->start)
+            if(modules_available[i]->start(gc, modules_available[i]) != GC_OK)
+                return GC_ERROR;
+    }
+
+    return GC_OK;
+}
+
 static void client_logged(struct gc_s *gc, sn error)
 {
     sn_initz(ok, "ok");
@@ -510,6 +532,7 @@ struct gc_s *gc_init(struct gc_init_s *init)
     gc->callback.traffic         = init->callback.traffic;
     gc->callback.account_set     = init->callback.account_set;
     gc->callback.account_exists  = init->callback.account_exists;
+    gc->modules                  = init->module;
 
     if(gc_backend_init(gc, &gc->hostname) != GC_OK) {
         return NULL;
@@ -537,6 +560,11 @@ struct gc_s *gc_init(struct gc_init_s *init)
     gc->shutdown_timer.repeat = 0.1;
     gc->shutdown_timer.data = gc;
 
+    if(modules_start(gc) != GC_OK) {
+        hm_log(LOG_CRIT, &gc->log, "Modules initialization failed");
+        return NULL;
+    }
+
     return gc;
 }
 
@@ -555,6 +583,7 @@ static void stop(struct ev_loop *loop, struct ev_timer *timer, int revents)
 
     ev_timer_stop(gc->loop, &gc->shutdown_timer);
 
+    modules_stop(gc);
     gc_config_free(gc->pool, &gc->config);
     gc_upstream_force_stop(gc->loop);
     gc_tunnel_stop_all(gc->pool);

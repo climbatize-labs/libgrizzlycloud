@@ -49,6 +49,7 @@
 #include <openssl/engine.h>
 #include <openssl/conf.h>
 
+#include <module.h>
 #include <log.h>
 #include <pool.h>
 #include <utils.h>
