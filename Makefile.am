@@ -27,13 +27,13 @@ grizzlycloud_LDADD = .libs/libgrizzlycloud.a \
             deps/openssl/libcrypto.a \
             deps/libjson-c/.libs/libjson-c.a \
             deps/libev/.libs/libev.a \
-            -lpthread -ldl -lm -lcurl
+            -ldl -lm -lcurl
 
 get-deps:
 	git submodule update --init --recursive
 
 build-deps:
-	cd deps/openssl/ && ./config -DPURIFY && make
+	cd deps/openssl/ && ./config -DPURIFY no-threads && make
 	cd deps/libev/ && ./configure && make
 	cd deps/libjson-c/ && libtoolize && aclocal && autoconf && automake --add-missing && ./configure && make
 
