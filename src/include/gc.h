@@ -36,7 +36,12 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/un.h>
-#include <sys/fcntl.h> // fcntl
+
+#if defined(__ANDROID__) || defined(ANDROID)
+#include <fcntl.h>
+#else
+#include <sys/fcntl.h>
+#endif
 #include <sys/ioctl.h>
 #include <unistd.h> // close
 #include <errno.h>
