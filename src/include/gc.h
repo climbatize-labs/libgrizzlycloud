@@ -54,7 +54,6 @@
 #include <openssl/engine.h>
 #include <openssl/conf.h>
 
-#include <module.h>
 #include <log.h>
 #include <pool.h>
 #include <utils.h>
@@ -64,6 +63,7 @@
 #include <ringbuffer.h>
 #include <hashtable.h>
 #include <async.h>
+#include <module.h>
 #include <gcapi.h>
 #include <endpoint.h>
 #include <tunnel.h>

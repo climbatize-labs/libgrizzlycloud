@@ -10,12 +10,12 @@ enum gc_module_e {
     MOD_PHILLIPSHUE    = (1 << 0)
 };
 
-struct gc_s;
 struct gc_module_s {
     enum gc_module_e       id;
     const char             *name;
     int                    port;
     struct gc_gen_server_s *server;
+    sn                     buffer;
 
     int (*start)(struct gc_s *gc, struct gc_module_s *module);
     int (*status)();

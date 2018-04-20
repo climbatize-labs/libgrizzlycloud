@@ -86,6 +86,14 @@
 #define sn_p(m_var) m_var.n, m_var.s
 
 /*
+ * Append to m_dst sn
+ *
+ */
+#define sn_append(m_pool, m_dst, m_src, m_nsrc)\
+    m_dst.s = hm_prealloc(m_pool, m_dst.s, m_dst.n + m_nsrc);\
+    memcpy(m_dst.s + m_dst.n, m_src, m_nsrc);\
+    m_dst.n += m_nsrc;
+/*
  * Allocate m_size bytes from heap
  *
  * See sn_bytes_append(), sn_bytes_delete()

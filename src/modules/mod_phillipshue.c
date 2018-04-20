@@ -2,9 +2,32 @@
 
 #include <gc.h>
 
+struct gc_module_s module_phillipshue;
+
 size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdata)
 {
-    gc_gen_ev_send(userdata, ptr, nmemb);
+    struct gc_gen_client_s *client = userdata;
+    assert(client);
+    assert(size == sizeof(char));
+    sn_append(client->base.pool, module_phillipshue.buffer, ptr, nmemb);
+
+    struct json_tokener *tok = json_tokener_new();
+    struct json_object *jobj = json_tokener_parse_ex(tok, module_phillipshue.buffer.s,
+                                                     module_phillipshue.buffer.n);
+    json_tokener_free(tok);
+
+    if(jobj == NULL) {
+        return nmemb;
+    }
+
+    json_object_put(jobj);
+
+    gc_gen_ev_send(client, module_phillipshue.buffer.s,
+                   module_phillipshue.buffer.n);
+
+    hm_pfree(client->base.pool, module_phillipshue.buffer.s);
+    sn_setr(module_phillipshue.buffer, NULL, 0);
+
     return nmemb;
 }
 
@@ -96,6 +119,8 @@ static int start(struct gc_s *gc, struct gc_module_s *module)
         module->server = NULL;
         return ret;
     }
+
+    sn_setr(module->buffer, NULL, 0);
 
     return GC_OK;
 }
