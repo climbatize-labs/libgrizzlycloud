@@ -158,6 +158,8 @@ int main(int argc, char **argv)
         printf("  --backends <file>  - Specify list of backend nodes.\n");
         printf("                       Default is config/backend.cfg.\n");
         printf("  --daemonize        - Daemonize client.\n");
+        printf("  --module <name>    - Name of the module. Comma-separated:\n");
+        printf("                       phillipshue\n");
         printf("\n");
         exit(1);
     }
@@ -166,6 +168,7 @@ int main(int argc, char **argv)
     const char *log_file    = NULL;
     const char *log_level   = "debug";
     const char *backends    = "config/backends.cfg";
+    const char *module      = NULL;
     int nolog = 0;
     int daemonize = 0;
 
@@ -183,6 +186,8 @@ int main(int argc, char **argv)
             log_level = argv[i + 1];
         else if(strcmp(argv[i], "--backends") == 0 && (i + 1) < argc)
             backends = argv[i + 1];
+        else if(strcmp(argv[i], "--module") == 0 && (i + 1) < argc)
+            module = argv[i + 1];
     }
 
     if(config_file == NULL) {
@@ -223,6 +228,9 @@ int main(int argc, char **argv)
     else if(strcmp(log_level, "alert")   == 0) gci.loglevel = LOG_ALERT;
     else if(strcmp(log_level, "emerg")   == 0) gci.loglevel = LOG_EMERG;
     else gci.loglevel = LOG_DEBUG;
+
+    gci.module = MOD_NONE;
+    if(module && strcmp(module, "phillipshue") == 0) gci.module |= MOD_PHILLIPSHUE;
 
     gc = gc_init(&gci);
     if(gc == NULL) {

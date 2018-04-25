@@ -150,6 +150,7 @@ struct gc_init_s {
     const char     *logfile;                            /**< Log file. */
     const char     *backendfile;                        /**< Backends file. */
     enum loglevel_e loglevel;                           /**< Log level. */
+    enum gc_module_e module;                            /**< Active modules. */
 
     struct {
         void (*state_changed)(struct gc_s *gc, enum gc_state_e state);       /**< Upstream socket state cb. */
@@ -175,6 +176,7 @@ struct gc_s {
     int                 port;                           /**< Upstream's port. */
     struct gc_gen_client_ssl_s client;                  /**< Client's structure. */
     struct gc_config_s  config;                         /**< Parsed config. */
+    unsigned int        modules;                        /**< Flag of active modules. */
 
     struct {
         sn buf;                                         /**< Network buffer. */
