@@ -1,0 +1,12 @@
+# GrizzlyCloud Amazon Alexa
+
+It's possible to check your local grizzlycloud client's status by interacting with Amazon Alexa.
+
+1. Create Amazon account
+2. Create two SQS queues (one for requests, other for replies)
+3. Modify **keys.py** with your credentials
+4. Copy content of **lambda_function.py** to your custom lambda and import **keys.py**
+5. Create Alexa skill based on **skill.json**
+6. Test skill by invoking 'tell grizzly cloud to check status'
+7. Run **client.py** locally as a cronjob to fetch and handle requests
+8. Retrieve status by saying 'ask grizzly cloud for replies'
