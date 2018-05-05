@@ -326,7 +326,8 @@ static void server_async_client(struct ev_loop *loop, ev_io *w, int revents)
     async_client_accept(cc);
 }
 
-int async_server(struct gc_gen_server_s *cs, struct gc_s *gc)
+int async_server(struct gc_gen_server_s *cs, struct gc_s *gc,
+                 snb *new_port_local)
 {
     struct addrinfo *ai, hints;
     memset(&hints, 0, sizeof hints);
@@ -372,6 +373,19 @@ int async_server(struct gc_gen_server_s *cs, struct gc_s *gc)
 
     freeaddrinfo(ai);
     listen(cs->fd, GC_DEFAULT_BACKLOG);
+
+    struct sockaddr_in sin;
+    socklen_t len = sizeof(sin);
+    if(getsockname(cs->fd, (struct sockaddr *)&sin, &len) == -1) {
+        hm_log(LOG_CRIT, cs->log, "Server getsockname() failed");
+        return GC_ERROR;
+    }
+
+    if(strcmp(cs->port, "0") == 0) {
+        assert(new_port_local);
+        sn_itoa(npl, ntohs(sin.sin_port), 32)
+        snb_cpy_d(new_port_local, npl);
+    }
 
     ev_io_init(&cs->listener, server_async_client, cs->fd, EV_READ);
     cs->listener.data = cs;

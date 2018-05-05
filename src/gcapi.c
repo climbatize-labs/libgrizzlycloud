@@ -44,6 +44,7 @@ static int message_from(struct gc_s *gc, struct proto_s *p)
     sn_initr(type, argv[0], strlen(argv[0]));
     sn_initz(response, "tunnel_response");
     sn_initz(request, "tunnel_request");
+    sn_initz(update, "tunnel_update");
 
     if(sn_cmps(type, request)) {
         ret = gc_endpoint_request(gc, p, argv, argc);
@@ -55,6 +56,13 @@ static int message_from(struct gc_s *gc, struct proto_s *p)
         if(ret != GC_OK) {
             hm_log(LOG_TRACE, &gc->log, "Tunnel reponse failed");
         }
+    } else if(sn_cmps(type, update)) {
+        ret = gc_tunnel_update(gc, p, argv, argc);
+        if(ret != GC_OK) {
+            hm_log(LOG_TRACE, &gc->log, "Tunnel update failed");
+        }
+    } else {
+        abort();
     }
 
     hm_pfree(gc->pool, argv);
@@ -150,9 +158,16 @@ static void device_pair_reply(struct gc_s *gc, struct gc_device_pair_s *pair)
                                         sn_p(pair->cloud), sn_p(pair->device),
                                         sn_p(port), sn_p(port_local));
             snb_cpy_ds(gc->config.tunnels[i].pid, pair->pid);
-            break;
+            return;
         }
     }
+
+
+    hm_log(LOG_WARNING, &gc->log, "Tunnel [cloud:device:port:port_local] [%.*s:%.*s:%.*s:%.*s] not paired",
+                                  sn_p(pair->cloud),
+                                  sn_p(pair->device),
+                                  sn_p(pair->port_local),
+                                  sn_p(pair->port_remote));
 }
 
 static void traffic_mi(struct gc_s *gc)
@@ -179,7 +194,7 @@ static void devices_pair(struct ev_loop *loop, struct ev_timer *timer, int reven
         sn_set(pr.u.device_pair.device,      gc->config.tunnels[i].device);
 
         sn_itoa(port,       gc->config.tunnels[i].port, 8);
-        sn_itoa(port_local, gc->config.tunnels[i].port_local,  8);
+        sn_itoa(port_local, gc->config.tunnels[i].port_local, 8);
 
         sn_set(pr.u.device_pair.local_port,  port_local);
         sn_set(pr.u.device_pair.remote_port, port);
