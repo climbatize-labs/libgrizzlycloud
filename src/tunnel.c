@@ -53,15 +53,6 @@ int gc_tunnel_update(struct gc_s *gc, struct proto_s *p, char **argv, int argc)
     for(t = tunnels; t != NULL; t = t->next) {
 #define CMP(m_dst, m_src)\
     sn_memcmp(m_dst, strlen(m_dst), m_src.s, m_src.n)
-
-            hm_log(LOG_TRACE, &gc->log, "Comparing Tunnel [cloud:device:port_local:port_remote] [%.*s:%.*s:%.*s:%.*s] updated to port_local [%s]",
-                                sn_p(t->cloud),
-                                sn_p(t->device),
-                                sn_p(t->port_local),
-                                sn_p(t->port_remote),
-                                argv[5]);
-
-
         if(CMP(argv[1], t->cloud) &&
            CMP(argv[2], t->device) &&
            CMP(argv[3], t->port_local) &&
@@ -136,7 +127,7 @@ static void client_data(struct gc_gen_client_s *client, char *buf, const int len
 }
 
 static int alloc_server(struct gc_s *gc, struct gc_gen_server_s **c,
-                        sn port_local, snb *new_port_local)
+                        snb port_local, snb *new_port_local)
 {
     *c = hm_palloc(gc->pool, sizeof(**c));
     if(!*c) return GC_ERROR;
@@ -166,7 +157,6 @@ static void port_update(struct gc_s *gc, struct gc_device_pair_s *pair,
                         snb new_port_local)
 {
     sn_initr(tmp, "device", 6);
-
     char header[128];
     snprintf(header, sizeof(header), "tunnel_update/%.*s/%.*s/%.*s/%.*s/%.*s",
                                      sn_p(pair->cloud),
@@ -185,6 +175,22 @@ static void port_update(struct gc_s *gc, struct gc_device_pair_s *pair,
     int ret;
     ret = gc_packet_send(gc, &pr);
     if(ret != GC_OK) CALLBACK_ERROR(&gc->log, "update_port_local");
+
+    int i;
+    for(i = 0; i < gc->config.ntunnels; i++) {
+        sn_itoa(port,       gc->config.tunnels[i].port, 8);
+        sn_itoa(port_local, gc->config.tunnels[i].port_local,  8);
+
+        if(sn_cmps(gc->config.tunnels[i].cloud, pair->cloud) &&
+           sn_cmps(gc->config.tunnels[i].device, pair->device) &&
+           sn_cmps(port, pair->port_remote) &&
+           sn_cmps(port_local, pair->port_local)) {
+            sn_atoi(npl, new_port_local, 8);
+            gc->config.tunnels[i].port_local = npl;
+            snb_cpy_ds(pair->port_local, new_port_local);
+            break;
+        }
+    }
 }
 
 int gc_tunnel_add(struct gc_s *gc, struct gc_device_pair_s *pair, sn type)
@@ -201,7 +207,6 @@ int gc_tunnel_add(struct gc_s *gc, struct gc_device_pair_s *pair, sn type)
         sn_atoi(port_local, pair->port_local, 32)
         if(port_local == 0) {
             port_update(gc, pair, new_port_local);
-            sn_set(pair->port_local, new_port_local);
         }
     }
 

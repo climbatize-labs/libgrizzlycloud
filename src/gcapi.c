@@ -162,7 +162,6 @@ static void device_pair_reply(struct gc_s *gc, struct gc_device_pair_s *pair)
         }
     }
 
-
     hm_log(LOG_WARNING, &gc->log, "Tunnel [cloud:device:port:port_local] [%.*s:%.*s:%.*s:%.*s] not paired",
                                   sn_p(pair->cloud),
                                   sn_p(pair->device),
@@ -319,13 +318,23 @@ static void callback_data(struct gc_s *gc, const void *buffer, const int nbuffer
                 i += sizeof(m_var.n) + m_var.n;\
             }
 
+#define READCPY(m_var)\
+            if(i < list.n) {\
+                m_var.n = *(int *)(&((list.s)[i]));\
+                /* Swap memory because of server high endian */\
+                gc_swap_memory((void *)&m_var.n, sizeof(m_var.n));\
+                assert(sizeof(m_var.s) >= m_var.n);\
+                memcpy(m_var.s, &((list.s)[i + 4]), m_var.n);\
+                i += sizeof(m_var.n) + m_var.n;\
+            }
+
                 int i;
                 for(i = 0; i < list.n; i++) {
                     struct gc_device_pair_s pair;
                     sn_set(pair.cloud, p.u.device_pair_reply.cloud);
                     READ(pair.pid);
                     READ(pair.device);
-                    READ(pair.port_local);
+                    READCPY(pair.port_local);
                     READ(pair.port_remote);
                     sn_set(pair.type, p.u.device_pair_reply.type);
                     device_pair_reply(gc, &pair);
