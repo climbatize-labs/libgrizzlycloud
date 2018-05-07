@@ -53,6 +53,19 @@ struct gc_tunnel_s {
 int gc_tunnel_add(struct gc_s *gc, struct gc_device_pair_s *pair, sn type);
 
 /**
+ * @brief Update tunnel properties.
+ *
+ * Update local port of specified tunnel
+ *
+ * @param gc GC structure.
+ * @param p Updater message header.
+ * @param argv parsed header elements.
+ * @param argc number of parsed elements.
+ * @return GC_OK on success, GC_ERROR on failure.
+ */
+int gc_tunnel_update(struct gc_s *gc, struct proto_s *p, char **argv, int argc);
+
+/**
  * @brief Handle tunnel response.
  *
  * Tunnel sends request to specific cloud via upstream.

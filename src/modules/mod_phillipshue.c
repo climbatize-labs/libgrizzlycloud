@@ -113,7 +113,7 @@ static int start(struct gc_s *gc, struct gc_module_s *module)
     module->server->port = port;
 
     int ret;
-    ret = async_server(module->server, gc);
+    ret = async_server(module->server, gc, NULL);
     if(ret != GC_OK) {
         hm_pfree(gc->pool, module->server);
         module->server = NULL;

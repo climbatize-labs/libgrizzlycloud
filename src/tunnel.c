@@ -42,6 +42,31 @@ static struct gc_gen_client_s *tunnel_client_find(sn port, sn fd)
     return NULL;
 }
 
+int gc_tunnel_update(struct gc_s *gc, struct proto_s *p, char **argv, int argc)
+{
+    struct gc_tunnel_s *t;
+
+    if(argc != 6) {
+        return GC_ERROR;
+    }
+
+    for(t = tunnels; t != NULL; t = t->next) {
+#define CMP(m_dst, m_src)\
+    sn_memcmp(m_dst, strlen(m_dst), m_src.s, m_src.n)
+        if(CMP(argv[1], t->cloud) &&
+           CMP(argv[2], t->device) &&
+           CMP(argv[3], t->port_local) &&
+           CMP(argv[4], t->port_remote)) {
+
+            sn_initz(port_local, argv[5]);
+            snb_cpy_ds(t->port_local, port_local)
+            return GC_OK;
+        }
+    }
+
+    return GC_ERROR;
+}
+
 int gc_tunnel_response(struct gc_s *gc, struct proto_s *p, char **argv, int argc)
 {
     if(argc != 3) {
@@ -101,7 +126,8 @@ static void client_data(struct gc_gen_client_s *client, char *buf, const int len
     gc_packet_send(client->base.gc, &m);
 }
 
-static int alloc_server(struct gc_s *gc, struct gc_gen_server_s **c, sn port_local)
+static int alloc_server(struct gc_s *gc, struct gc_gen_server_s **c,
+                        snb port_local, snb *new_port_local)
 {
     *c = hm_palloc(gc->pool, sizeof(**c));
     if(!*c) return GC_ERROR;
@@ -118,7 +144,7 @@ static int alloc_server(struct gc_s *gc, struct gc_gen_server_s **c, sn port_loc
     (*c)->port = port;
 
     int ret;
-    ret = async_server(*c, gc);
+    ret = async_server(*c, gc, new_port_local);
     if(ret != GC_OK) {
         hm_pfree(gc->pool, *c);
         return ret;
@@ -127,15 +153,61 @@ static int alloc_server(struct gc_s *gc, struct gc_gen_server_s **c, sn port_loc
     return GC_OK;
 }
 
+static void port_update(struct gc_s *gc, struct gc_device_pair_s *pair,
+                        snb new_port_local)
+{
+    sn_initr(tmp, "device", 6);
+    char header[128];
+    snprintf(header, sizeof(header), "tunnel_update/%.*s/%.*s/%.*s/%.*s/%.*s",
+                                     sn_p(pair->cloud),
+                                     sn_p(gc->config.device),
+                                     sn_p(pair->port_local),
+                                     sn_p(pair->port_remote),
+                                     sn_p(new_port_local));
+    sn_initz(snheader, header);
+
+    struct proto_s pr = { .type = MESSAGE_TO };
+    sn_set(pr.u.message_to.to,      tmp);
+    sn_set(pr.u.message_to.address, pair->pid);
+    sn_set(pr.u.message_to.tp,      snheader);
+    sn_set(pr.u.message_to.body,    tmp);
+
+    int ret;
+    ret = gc_packet_send(gc, &pr);
+    if(ret != GC_OK) CALLBACK_ERROR(&gc->log, "update_port_local");
+
+    int i;
+    for(i = 0; i < gc->config.ntunnels; i++) {
+        sn_itoa(port,       gc->config.tunnels[i].port, 8);
+        sn_itoa(port_local, gc->config.tunnels[i].port_local,  8);
+
+        if(sn_cmps(gc->config.tunnels[i].cloud, pair->cloud) &&
+           sn_cmps(gc->config.tunnels[i].device, pair->device) &&
+           sn_cmps(port, pair->port_remote) &&
+           sn_cmps(port_local, pair->port_local)) {
+            sn_atoi(npl, new_port_local, 8);
+            gc->config.tunnels[i].port_local = npl;
+            snb_cpy_ds(pair->port_local, new_port_local);
+            break;
+        }
+    }
+}
+
 int gc_tunnel_add(struct gc_s *gc, struct gc_device_pair_s *pair, sn type)
 {
     struct gc_gen_server_s *c = NULL;
 
     sn_initz(forced, "forced");
     if(!sn_cmps(type, forced)) {
+        snb new_port_local;
         int ret;
-        ret = alloc_server(gc, &c, pair->port_local);
+        ret = alloc_server(gc, &c, pair->port_local, &new_port_local);
         if(ret != GC_OK) return ret;
+
+        sn_atoi(port_local, pair->port_local, 32)
+        if(port_local == 0) {
+            port_update(gc, pair, new_port_local);
+        }
     }
 
     struct gc_tunnel_s *t = hm_palloc(gc->pool, sizeof(*t));

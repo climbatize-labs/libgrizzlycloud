@@ -149,9 +149,11 @@ struct gc_gen_client_ssl_s {
  *
  * @param cs Generic server structure.
  * @param gc GC structure.
+ * @param new_port_local OS specified listen port in case user passes 0.
  * @return GC_OK on success, GC_ERROR on failure.
  */
-int async_server(struct gc_gen_server_s *cs, struct gc_s *gc);
+int async_server(struct gc_gen_server_s *cs, struct gc_s *gc,
+                 snb *new_port_local);
 
 /**
  * @brief Shutdown generic server.

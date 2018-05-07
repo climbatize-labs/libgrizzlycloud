@@ -134,7 +134,7 @@ struct gc_device_pair_s {
     sn cloud;                                           /**< Paired cloud. */
     sn pid;                                             /**< Paired process ID. */
     sn device;                                          /**< Paired device name. */
-    sn port_local;                                      /**< Local port. */
+    snb port_local;                                     /**< Local port. */
     sn port_remote;                                     /**< Rmote port. */
     sn type;                                            /**< If "forced" entity is being paired. */
 };
