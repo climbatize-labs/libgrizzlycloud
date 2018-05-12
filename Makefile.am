@@ -7,6 +7,7 @@ libgrizzlycloud_la_SOURCES = \
     src/async_server.c \
     src/backend.c \
     src/endpoint.c \
+    src/fs.c \
     src/gcapi.c \
     src/hashtable.c \
     src/log.c \

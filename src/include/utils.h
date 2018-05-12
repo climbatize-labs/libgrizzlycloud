@@ -322,6 +322,36 @@ void gc_swap_memory(char *dst, int ndst);
 int gc_fread(struct hm_pool_s *pool, char **dst, const char *fname);
 
 /**
+ * @brief Write to file.
+ *
+ * Write @p content to file @p fname.
+ * @param fname File to access.
+ * @param mode File mode.
+ * @param content Content to write.
+ * @param ncontent Length of content.
+ * @return On success zero is returned.
+ */
+int gc_fwrite(char *fname, const char *mode, char *content, int ncontent);
+
+/**
+ * @brief Remove file.
+ *
+ * Remove @p fname from the filesystem.
+ * @param fname File to delete.
+ * @return On success zero is returned, on error, -1 is returned.
+ */
+int gc_fremove(const char *fname);
+
+/**
+ * @brief Binary to a hexadecimal string.
+ *
+ * @param dst Destination buffer.
+ * @param src Source buffer.
+ * @return void.
+ */
+void bin2hexstr(snb *dst, snb *src);
+
+/**
  * @brief Create string representation of time.
  *
  * @param b Buffer to fill with characters.

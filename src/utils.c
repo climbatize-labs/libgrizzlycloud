@@ -368,3 +368,38 @@ int gc_fread(struct hm_pool_s *pool, char **dst, const char *fname)
     fclose(pfile);
     return result;
 }
+
+int gc_fwrite(char *fname, const char *mode, char *content, int ncontent)
+{
+    FILE *pfile;
+    int result;
+
+    pfile = fopen(fname, mode);
+    if(pfile == NULL) {
+        return -1;
+    }
+
+    result = fwrite(content, sizeof(char), ncontent, pfile);
+
+    fclose(pfile);
+    return !(result == ncontent);
+}
+
+int gc_fremove(const char *fname)
+{
+    return remove(fname);
+}
+
+void bin2hexstr(snb *dst, snb *src)
+{
+    int i;
+    char tmp[8];
+
+    for(i = 0, dst->n = 0; i < src->n; i++) {
+        snprintf(tmp, sizeof(tmp), "%x", (unsigned char)src->s[i]);
+        int n = strlen(tmp);
+        if((dst->n + n) > sizeof(dst->s)) break;
+        memcpy(dst->s + dst->n, tmp, n);
+        dst->n += n;
+    }
+}

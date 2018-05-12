@@ -75,6 +75,8 @@ static void pairs_offline(struct gc_s *gc, sn address)
     int i;
     for(i = 0; i < gc->config.ntunnels; i++) {
         if(address.n == 0) {
+            if(sn_len(gc->config.tunnels[i].pid) > 0)
+                fs_unpair(&gc->log, &gc->config.tunnels[i].pid);
             gc->config.tunnels[i].pid.n = 0;
         } else if(sn_cmps(gc->config.tunnels[i].pid, address)) {
             hm_log(LOG_TRACE, &gc->log, "Tunnel marking pair [cloud:device:port:port_local] [%.*s:%.*s:%d:%d] offline",
@@ -82,7 +84,9 @@ static void pairs_offline(struct gc_s *gc, sn address)
                                       sn_p(gc->config.tunnels[i].device),
                                       gc->config.tunnels[i].port,
                                       gc->config.tunnels[i].port_local);
+            fs_unpair(&gc->log, &gc->config.tunnels[i].pid);
             gc->config.tunnels[i].pid.n = 0;
+            break;
         }
     }
 }
@@ -99,7 +103,7 @@ static void cloud_offline(struct gc_s *gc, struct proto_s *p)
                      p->u.offline_set.cloud,
                      p->u.offline_set.device);
 
-    gc_tunnel_stop(gc->pool, p->u.offline_set.address);
+    gc_tunnel_stop(gc->pool, &gc->log, p->u.offline_set.address);
 }
 
 static void gc_upstream_force_stop(struct ev_loop *loop)
@@ -123,7 +127,7 @@ static void callback_error(struct gc_gen_client_ssl_s *c, enum gcerr_e error)
     // Stop pair timer
     ev_timer_stop(gclocal->loop, &gclocal->config.pair_timer);
 
-    gc_tunnel_stop_all(c->base.pool);
+    gc_tunnel_stop_all(c->base.pool, c->base.log);
     gc_endpoints_stop_all();
     if(c->base.active) {
         async_client_ssl_shutdown(c);
@@ -158,6 +162,7 @@ static void device_pair_reply(struct gc_s *gc, struct gc_device_pair_s *pair)
                                         sn_p(pair->cloud), sn_p(pair->device),
                                         sn_p(port), sn_p(port_local));
             snb_cpy_ds(gc->config.tunnels[i].pid, pair->pid);
+            fs_pair(&gc->log, pair);
             return;
         }
     }
@@ -610,7 +615,7 @@ static void stop(struct ev_loop *loop, struct ev_timer *timer, int revents)
     modules_stop(gc);
     gc_config_free(gc->pool, &gc->config);
     gc_upstream_force_stop(gc->loop);
-    gc_tunnel_stop_all(gc->pool);
+    gc_tunnel_stop_all(gc->pool, &gc->log);
     gc_endpoints_stop_all();
 }
 

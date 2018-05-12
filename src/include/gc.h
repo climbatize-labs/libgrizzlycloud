@@ -67,5 +67,6 @@
 #include <gcapi.h>
 #include <endpoint.h>
 #include <tunnel.h>
+#include <fs.h>
 
 #endif
