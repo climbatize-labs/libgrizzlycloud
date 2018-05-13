@@ -12,13 +12,18 @@ inline static void init_filename(char *f, int nf, snb *pid)
 void fs_pair(struct hm_log_s *log, struct gc_device_pair_s *pair)
 {
     char filename[128];
-    char content[128];
+    char content[256];
 
     snb pid;
     snb_cpy_ds(pid, pair->pid);
     init_filename(filename, sizeof(filename), &pid);
 
-    snprintf(content, sizeof(content), "%.*s\n%.*s",
+    snprintf(content, sizeof(content), "{\"cloud\"      : \"%.*s\",\n\
+                                         \"device\"     : \"%.*s\",\n\
+                                         \"portRemote\" : %.*s,\n\
+                                         \"portLocal\"  : %.*s }",
+                                       sn_p(pair->cloud),
+                                       sn_p(pair->device),
                                        sn_p(pair->port_remote),
                                        sn_p(pair->port_local));
 
