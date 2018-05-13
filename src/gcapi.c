@@ -568,6 +568,7 @@ struct gc_s *gc_init(struct gc_init_s *init)
     }
 
     gc->port = init->port > 0 ? init->port : GC_DEFAULT_PORT;
+    gc->clientterm = init->clientterm;
 
     // Initialize signals
     gc_signals(gc);
