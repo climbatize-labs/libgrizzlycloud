@@ -6,10 +6,10 @@ FILE="file.bin"
 DIR="test/ci/001"
 ports=( 8888 8889 )
 
-# Start server connected to US node
-gc_start $DIR/server.cfg $DIR/backend_us.cfg
-# Start client connected to UK node
-gc_start $DIR/client.cfg $DIR/backend_uk.cfg
+# Start server connected to CZ node
+gc_start $DIR/server.cfg $DIR/backend_cz.cfg
+# Start client connected to CZ node
+gc_start $DIR/client.cfg $DIR/backend_cz.cfg
 
 # Create dst directories
 echo 'Creating port directories'
