@@ -48,7 +48,12 @@ void async_client_shutdown(struct gc_gen_client_s *c)
         ht_rem(c->parent->clients, key, strlen(key), p);
     }
 
+    struct gc_s *gc = c->base.gc;
     hm_pfree(p, c);
+
+    if(gc->clientterm) {
+        gc_force_stop();
+    }
 }
 
 static void client_error(struct gc_gen_client_s *c, enum gcerr_e err)

@@ -82,18 +82,20 @@ int gc_tunnel_response(struct gc_s *gc, struct proto_s *p, char **argv, int argc
 /**
  * @brief Stop tunnel.
  *
- * @param pool Memory pool
- * @param pid process ID
+ * @param pool Memory pool.
+ * @param log Log structure.
+ * @param pid process ID.
  * @return void.
  */
-void gc_tunnel_stop(struct hm_pool_s *pool, sn pid);
+void gc_tunnel_stop(struct hm_pool_s *pool, struct hm_log_s *log, sn pid);
 
 /**
  * @brief Stop all tunnels.
  *
- * @param pool Memory pool
+ * @param pool Memory pool.
+ * @param log Log structure.
  * @return void.
  */
-void gc_tunnel_stop_all(struct hm_pool_s *pool);
+void gc_tunnel_stop_all(struct hm_pool_s *pool, struct hm_log_s *log);
 
 #endif

@@ -160,6 +160,7 @@ int main(int argc, char **argv)
         printf("  --daemonize        - Daemonize client.\n");
         printf("  --module <name>    - Name of the module. Comma-separated:\n");
         printf("                       phillipshue\n");
+        printf("  --clientterm       - Terminate when first client disconnects\n");
         printf("\n");
         exit(1);
     }
@@ -171,6 +172,7 @@ int main(int argc, char **argv)
     const char *module      = NULL;
     int nolog = 0;
     int daemonize = 0;
+    int clientterm = 0;
 
     int i;
     for(i = 0; i < argc; i++) {
@@ -188,6 +190,8 @@ int main(int argc, char **argv)
             backends = argv[i + 1];
         else if(strcmp(argv[i], "--module") == 0 && (i + 1) < argc)
             module = argv[i + 1];
+        else if(strcmp(argv[i], "--clientterm") == 0)
+            clientterm = 1;
     }
 
     if(config_file == NULL) {
@@ -231,6 +235,7 @@ int main(int argc, char **argv)
 
     gci.module = MOD_NONE;
     if(module && strcmp(module, "phillipshue") == 0) gci.module |= MOD_PHILLIPSHUE;
+    gci.clientterm = clientterm;
 
     gc = gc_init(&gci);
     if(gc == NULL) {
