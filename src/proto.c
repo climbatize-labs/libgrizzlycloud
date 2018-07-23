@@ -42,6 +42,12 @@ void gc_proto_dump(struct proto_s *p)
         printf("MESSAGE_TO_SET_REPLY\n");
         printf("error: %.*s\n", p->u.message_to_set_reply.error.n, p->u.message_to_set_reply.error.s);
         break;
+    case PING_SET:
+        printf("PING_SET\n");
+        break;
+    case PONG_SET:
+        printf("PONG_SET\n");
+        break;
     case ACCOUNT_LIST:
         printf("ACCOUNT_LIST\n");
         break;
@@ -235,6 +241,10 @@ int gc_serialize(struct hm_pool_s *pool, sn *dst, struct proto_s *src)
                     add_intern(pool, dst, src->u.message_to_set_reply.error.s, src->u.message_to_set_reply.error.n);
                 } else { return -1; }
             break;
+        case PING_SET:
+            break;
+        case PONG_SET:
+            break;
         case ACCOUNT_LIST:
             break;
         case ACCOUNT_LIST_REPLY:
@@ -386,6 +396,10 @@ int gc_deserialize(struct proto_s *dst, sn *src)
         { sn tmp; CRET(get_intern(&tmp, src));
         dst->u.message_to_set_reply.error.s = tmp.s;
         dst->u.message_to_set_reply.error.n = tmp.n;}
+        break;
+    case PING_SET:
+        break;
+    case PONG_SET:
         break;
     case ACCOUNT_LIST:
         break;

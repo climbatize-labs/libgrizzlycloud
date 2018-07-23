@@ -116,7 +116,7 @@ static void gc_upstream_force_stop(struct ev_loop *loop)
     }
 }
 
-static void callback_error(struct gc_gen_client_ssl_s *c, enum gcerr_e error)
+static void upstream_error(struct gc_gen_client_ssl_s *c, enum gcerr_e error)
 {
     hm_log(LOG_TRACE, c->base.log, "Upstream error %d", error);
 
@@ -127,6 +127,10 @@ static void callback_error(struct gc_gen_client_ssl_s *c, enum gcerr_e error)
     // Stop pair timer
     ev_timer_stop(gclocal->loop, &gclocal->config.pair_timer);
 
+    // Stop hand ang ping timers
+    ev_timer_stop(c->base.loop, &c->base.gc->ping_timer);
+    ev_timer_stop(c->base.loop, &c->base.gc->hang_timer);
+
     gc_tunnel_stop_all(c->base.pool, c->base.log);
     gc_endpoints_stop_all();
     if(c->base.active) {
@@ -134,6 +138,11 @@ static void callback_error(struct gc_gen_client_ssl_s *c, enum gcerr_e error)
         c->base.active = 0;
     }
     ev_timer_again(gclocal->loop, &gclocal->connect_timer);
+}
+
+static void callback_error(struct gc_gen_client_ssl_s *c, enum gcerr_e error)
+{
+    upstream_error(c, error);
 }
 
 static void device_pair_reply(struct gc_s *gc, struct gc_device_pair_s *pair)
@@ -289,6 +298,39 @@ static void parse_traffic(struct gc_s *gc, sn error, sn list)
     }
 }
 
+static void state_changed(struct gc_s *gc, enum gc_state_e state)
+{
+    if(state == GC_HANDSHAKE_SUCCESS) {
+        ev_timer_again(gc->loop, &gc->hang_timer);
+        ev_timer_again(gc->loop, &gc->ping_timer);
+    }
+
+    if(gc && gc->callback.state_changed)
+        gc->callback.state_changed(gc, state);
+}
+
+static void hang_reset(struct gc_s *gc)
+{
+    ev_timer_stop(gc->loop, &gc->hang_timer);
+    ev_timer_again(gc->loop, &gc->hang_timer);
+}
+
+static void hang(struct ev_loop *loop, struct ev_timer *timer, int revents)
+{
+    struct gc_s *gc = timer->data;
+    upstream_error(&gc->client, GC_PING_ERR);
+}
+
+static void ping(struct ev_loop *loop, struct ev_timer *timer, int revents)
+{
+    struct gc_s *gc = timer->data;
+    struct proto_s pr = { .type = PING_SET };
+
+    int ret;
+    ret = gc_packet_send(gc, &pr);
+    if(ret != GC_OK) CALLBACK_ERROR(&gc->log, "ping_set");
+}
+
 static void callback_data(struct gc_s *gc, const void *buffer, const int nbuffer)
 {
     struct proto_s p;
@@ -300,6 +342,9 @@ static void callback_data(struct gc_s *gc, const void *buffer, const int nbuffer
 
     hm_log(LOG_TRACE, &gc->log, "Received packet from upstream type: %d size: %d",
                                 p.type, nbuffer);
+
+    // Everytime there is data, reset hang timer
+    hang_reset(gc);
 
     switch(p.type) {
         case ACCOUNT_LOGIN_REPLY:
@@ -374,6 +419,10 @@ static void callback_data(struct gc_s *gc, const void *buffer, const int nbuffer
         case ACCOUNT_EXISTS_REPLY: {
                 if(gc->callback.account_exists) gc->callback.account_exists(gc, p.u.account_exists_reply.error);
                 gc_force_stop();
+            }
+        break;
+        case PONG_SET: {
+                hm_log(LOG_TRACE, &gc->log, "PONG received");
             }
         break;
         default:
@@ -563,6 +612,8 @@ struct gc_s *gc_init(struct gc_init_s *init)
     gc->callback.account_exists  = init->callback.account_exists;
     gc->modules                  = init->module;
 
+    gc->internal.state_changed   = state_changed;
+
     if(gc_backend_init(gc, &gc->hostname) != GC_OK) {
         return NULL;
     }
@@ -579,6 +630,14 @@ struct gc_s *gc_init(struct gc_init_s *init)
     }
 
     SSL_load_error_strings();
+
+    ev_init(&gc->hang_timer, hang);
+    gc->hang_timer.repeat = 15;
+    gc->hang_timer.data = gc;
+
+    ev_init(&gc->ping_timer, ping);
+    gc->ping_timer.repeat = 10;
+    gc->ping_timer.data = gc;
 
     // Try to connect to upstream every .repeat seconds
     ev_init(&gc->connect_timer, upstream_connect);
@@ -612,6 +671,8 @@ static void stop(struct ev_loop *loop, struct ev_timer *timer, int revents)
     struct gc_s *gc = (struct gc_s *)timer->data;
 
     ev_timer_stop(gc->loop, &gc->shutdown_timer);
+    ev_timer_stop(gc->loop, &gc->ping_timer);
+    ev_timer_stop(gc->loop, &gc->hang_timer);
 
     modules_stop(gc);
     gc_config_free(gc->pool, &gc->config);

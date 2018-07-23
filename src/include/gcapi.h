@@ -173,6 +173,8 @@ struct gc_s {
     struct hm_log_s     log;                            /**< Log structure. */
     struct ev_timer     connect_timer;                  /**< Event timer to re-establish upstream connection. */
     struct ev_timer     shutdown_timer;                 /**< Shutdown timer to close asynchronouslly. */
+    struct ev_timer     hang_timer;                     /**< Hang timer. */
+    struct ev_timer     ping_timer;                     /**< Ping timer. */
     snb                 hostname;                       /**< Upstream. */
     int                 port;                           /**< Upstream's port. */
     struct gc_gen_client_ssl_s client;                  /**< Client's structure. */
@@ -192,6 +194,10 @@ struct gc_s {
         void (*account_set)(struct gc_s *gc, sn error);                      /**< Account set callback. */
         void (*account_exists)(struct gc_s *gc, sn error);                   /**< Account exists callback. */
     } callback;
+
+    struct {
+        void (*state_changed)(struct gc_s *gc, enum gc_state_e state);       /**< Upstream socket state cb. */
+    } internal;
 };
 
 struct gc_s *gc_init(struct gc_init_s *init);

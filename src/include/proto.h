@@ -10,6 +10,8 @@
 enum proto_e {
     MESSAGE_TO,
     MESSAGE_TO_SET_REPLY,
+    PING_SET,
+    PONG_SET,
     ACCOUNT_LIST,
     ACCOUNT_LIST_REPLY,
     TRAFFIC_MI,
@@ -41,6 +43,12 @@ struct proto_s {
         struct {
             sn     error;
         } message_to_set_reply;
+        struct {
+            /* void */
+        } ping_set;
+        struct {
+            /* void */
+        } pong_set;
         struct {
             /* void */
         } account_list;
