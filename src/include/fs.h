@@ -34,8 +34,9 @@ void fs_pair(struct hm_log_s *log, struct gc_device_pair_s *pair);
  *
  * @param log Log structure.
  * @param pid Binary pid.
+ * @param port_remote Remote port.
  * @return void.
  */
-void fs_unpair(struct hm_log_s *log, snb *pid);
+void fs_unpair(struct hm_log_s *log, snb *pid, int port_remote);
 
 #endif

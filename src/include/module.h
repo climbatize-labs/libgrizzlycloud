@@ -1,13 +1,15 @@
 #ifndef GC_MODULE_H_
 #define GC_MODULE_H_
 
-#define MAX_MODULES   1
+#define MAX_MODULES   2
 
 #define MOD_PHILLIPSHUE_PORT 10220
+#define MOD_WEBCAM_PORT 10221
 
 enum gc_module_e {
     MOD_NONE           = 0,
-    MOD_PHILLIPSHUE    = (1 << 0)
+    MOD_PHILLIPSHUE    = (1 << 0),
+    MOD_WEBCAM         = (1 << 1)
 };
 
 struct gc_module_s {

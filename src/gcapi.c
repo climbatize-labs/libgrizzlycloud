@@ -76,7 +76,7 @@ static void pairs_offline(struct gc_s *gc, sn address)
     for(i = 0; i < gc->config.ntunnels; i++) {
         if(address.n == 0) {
             if(sn_len(gc->config.tunnels[i].pid) > 0)
-                fs_unpair(&gc->log, &gc->config.tunnels[i].pid);
+                fs_unpair(&gc->log, &gc->config.tunnels[i].pid, gc->config.tunnels[i].port_local);
             gc->config.tunnels[i].pid.n = 0;
         } else if(sn_cmps(gc->config.tunnels[i].pid, address)) {
             hm_log(LOG_TRACE, &gc->log, "Tunnel marking pair [cloud:device:port:port_local] [%.*s:%.*s:%d:%d] offline",
@@ -84,9 +84,8 @@ static void pairs_offline(struct gc_s *gc, sn address)
                                       sn_p(gc->config.tunnels[i].device),
                                       gc->config.tunnels[i].port,
                                       gc->config.tunnels[i].port_local);
-            fs_unpair(&gc->log, &gc->config.tunnels[i].pid);
+            fs_unpair(&gc->log, &gc->config.tunnels[i].pid, gc->config.tunnels[i].port_local);
             gc->config.tunnels[i].pid.n = 0;
-            break;
         }
     }
 }

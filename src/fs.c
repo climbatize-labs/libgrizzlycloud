@@ -1,12 +1,12 @@
 #include <gc.h>
 
-inline static void init_filename(char *f, int nf, snb *pid)
+inline static void init_filename(char *f, int nf, snb *pid, sn port_remote)
 {
     snb hexstr;
 
     bin2hexstr(&hexstr, pid);
-    snprintf(f, nf, "/tmp/gc_%.*s",
-                    sn_p(hexstr));
+    snprintf(f, nf, "/tmp/gc_%.*s_%.*s",
+                    sn_p(hexstr), sn_p(port_remote));
 }
 
 void fs_pair(struct hm_log_s *log, struct gc_device_pair_s *pair)
@@ -16,7 +16,8 @@ void fs_pair(struct hm_log_s *log, struct gc_device_pair_s *pair)
 
     snb pid;
     snb_cpy_ds(pid, pair->pid);
-    init_filename(filename, sizeof(filename), &pid);
+    init_filename(filename, sizeof(filename), &pid, pair->port_remote);
+    printf("FS pair: %s\n", filename);
 
     snprintf(content, sizeof(content), "{\"cloud\"      : \"%.*s\",\n\
                                          \"device\"     : \"%.*s\",\n\
@@ -31,13 +32,17 @@ void fs_pair(struct hm_log_s *log, struct gc_device_pair_s *pair)
         hm_log(LOG_WARNING, log, "File [%s] couldn't be saved",
                                  filename);
     }
+    printf("File %s saved\n", filename);
 }
 
-void fs_unpair(struct hm_log_s *log, snb *pid)
+void fs_unpair(struct hm_log_s *log, snb *pid, int port_remote)
 {
     char filename[128];
 
-    init_filename(filename, sizeof(filename), pid);
+    sn_itoa(pr, port_remote, 32);
+
+    init_filename(filename, sizeof(filename), pid, pr);
+    printf("FS unpair: %s\n", filename);
 
     if(gc_fremove(filename) != 0) {
         hm_log(LOG_WARNING, log, "File [%s] couldn't be deleted",

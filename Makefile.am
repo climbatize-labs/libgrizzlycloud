@@ -17,7 +17,8 @@ libgrizzlycloud_la_SOURCES = \
     src/ringbuffer.c \
     src/tunnel.c \
     src/utils.c \
-    src/modules/mod_phillipshue.c
+    src/modules/mod_phillipshue.c \
+	src/modules/mod_webcam.c
 
 libgrizzlycloud_la_LDFLAGS = -version-info 0:0:0
 

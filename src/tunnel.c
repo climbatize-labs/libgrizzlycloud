@@ -238,7 +238,8 @@ void gc_tunnel_stop(struct hm_pool_s *pool, struct hm_log_s *log, sn pid)
     for(t = tunnels, prev = NULL; t != NULL; ) {
         if(sn_cmps(t->pid, pid)) {
 
-            fs_unpair(log, &t->pid);
+            sn_atoi(pr, t->port_remote, 32);
+            fs_unpair(log, &t->pid, pr);
             if(t->server) {
                 hm_log(LOG_TRACE, t->server->log, "Tunnel stop [cloud:device:port:port_remote] [%.*s:%.*s:%.*s:%.*s]",
                                                   sn_p(t->cloud),
@@ -266,7 +267,8 @@ void gc_tunnel_stop_all(struct hm_pool_s *pool, struct hm_log_s *log)
     struct gc_tunnel_s *t, *del;
 
     for(t = tunnels; t != NULL; ) {
-        fs_unpair(log, &t->pid);
+        sn_atoi(pr, t->port_remote, 32);
+        fs_unpair(log, &t->pid, pr);
         if(t->server) async_server_shutdown(t->server);
         del = t;
         t = t->next;
