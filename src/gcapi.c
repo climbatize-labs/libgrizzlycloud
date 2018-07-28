@@ -23,6 +23,18 @@ int gc_sigterm = 0;
 
 static struct gc_s *gclocal = NULL;
 
+int endpoint_stop(struct gc_s *gc, struct proto_s *p, char **argv, int argc)
+{
+    sn_initz(ext, "ext");
+
+    gc_endpoint_stop(gc->pool, &gc->log,
+                     p->u.message_from.from_address,
+                     ext,
+                     ext);
+
+    return GC_OK;
+}
+
 static int message_from(struct gc_s *gc, struct proto_s *p)
 {
     char **argv;
@@ -45,6 +57,7 @@ static int message_from(struct gc_s *gc, struct proto_s *p)
     sn_initz(response, "tunnel_response");
     sn_initz(request, "tunnel_request");
     sn_initz(update, "tunnel_update");
+    sn_initz(estop, "endpoint_stop");
 
     if(sn_cmps(type, request)) {
         ret = gc_endpoint_request(gc, p, argv, argc);
@@ -60,6 +73,11 @@ static int message_from(struct gc_s *gc, struct proto_s *p)
         ret = gc_tunnel_update(gc, p, argv, argc);
         if(ret != GC_OK) {
             hm_log(LOG_TRACE, &gc->log, "Tunnel update failed");
+        }
+    } else if(sn_cmps(type, estop)) {
+        ret = endpoint_stop(gc, p, argv, argc);
+        if(ret != GC_OK) {
+            hm_log(LOG_TRACE, &gc->log, "Endpoint stop failed");
         }
     } else {
         abort();

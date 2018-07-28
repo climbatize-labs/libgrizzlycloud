@@ -19,6 +19,25 @@
  */
 #include <gc.h>
 
+static void endpoint_stop(struct gc_gen_client_s *client, struct gc_tunnel_s *tunnel, int fd)
+{
+    sn_initz(payload, "data");
+
+    // Message header
+    char header[64];
+    snprintf(header, sizeof(header), "endpoint_stop/%d", fd);
+
+    sn_initz(snheader, header);
+
+    struct proto_s m = { .type = MESSAGE_TO };
+    sn_set(m.u.message_to.to,      tunnel->device);
+    sn_set(m.u.message_to.address, tunnel->pid);
+    sn_set(m.u.message_to.body,    payload);
+    sn_set(m.u.message_to.tp,      snheader);
+
+    gc_packet_send(client->base.gc, &m);
+}
+
 void async_client_shutdown(struct gc_gen_client_s *c)
 {
     assert(c);
@@ -34,6 +53,10 @@ void async_client_shutdown(struct gc_gen_client_s *c)
     hm_log(LOG_DEBUG, c->base.log, "Removing TCP client [%.*s:%d] fd: [%d] alive since: [%s]",
                                    sn_p(c->base.net.ip), c->base.net.port,
                                    c->base.fd, c->base.date);
+
+    if(c->parent && c->parent->tunnel) {
+        endpoint_stop(c, c->parent->tunnel, c->base.fd);
+    }
 
     int ret;
     ret = gc_fd_close(c->base.fd);
