@@ -275,8 +275,8 @@ static void end_handshake(struct gc_gen_client_ssl_s *c)
 
     struct gc_s *gc = c->base.gc;
     assert(gc);
-    if(gc && gc->callback.state_changed)
-        gc->callback.state_changed(gc, GC_HANDSHAKE_SUCCESS);
+    if(gc && gc->internal.state_changed)
+        gc->internal.state_changed(gc, GC_HANDSHAKE_SUCCESS);
 }
 
 static void client_handshake(struct ev_loop *loop, ev_io *w, int revents)

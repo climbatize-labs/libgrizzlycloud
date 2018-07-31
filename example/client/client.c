@@ -158,8 +158,7 @@ int main(int argc, char **argv)
         printf("  --backends <file>  - Specify list of backend nodes.\n");
         printf("                       Default is config/backend.cfg.\n");
         printf("  --daemonize        - Daemonize client.\n");
-        printf("  --module <name>    - Name of the module. Comma-separated:\n");
-        printf("                       phillipshue\n");
+        printf("  --module all       - Activate all available modules\n");
         printf("  --clientterm       - Terminate when first client disconnects\n");
         printf("\n");
         exit(1);
@@ -234,7 +233,7 @@ int main(int argc, char **argv)
     else gci.loglevel = LOG_DEBUG;
 
     gci.module = MOD_NONE;
-    if(module && strcmp(module, "phillipshue") == 0) gci.module |= MOD_PHILLIPSHUE;
+    if(module && strcmp(module, "all") == 0) gci.module |= MOD_PHILLIPSHUE|MOD_WEBCAM;
     gci.clientterm = clientterm;
 
     gc = gc_init(&gci);

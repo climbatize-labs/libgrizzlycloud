@@ -48,6 +48,7 @@ enum gcerr_e {
     GC_WRITE_ERR,           /**< Error writing to socket. */
     GC_PACKETEXPECT_ERR,    /**< Packet length unexpected. */
     GC_SOCKET_ERR,          /**< Generic socket error. */
+    GC_PING_ERR,            /**< Ping error. */
 };
 
 struct gc_gen_client_s;
