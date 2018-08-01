@@ -160,7 +160,7 @@
  */
 #define snb_cpy_ds(m_dst, m_src)\
     m_dst.n = 0;\
-    if(sizeof(m_dst.s) >= m_src.n) {\
+    if (sizeof(m_dst.s) >= m_src.n) {\
         m_dst.n = m_src.n;\
         memcpy(m_dst.s, m_src.s, m_src.n);\
     } else { abort(); }
@@ -173,7 +173,7 @@
  */
 #define snb_cpy_d(m_dst, m_src)\
     m_dst->n = 0;\
-    if(sizeof(m_dst->s) >= m_src.n) {\
+    if (sizeof(m_dst->s) >= m_src.n) {\
         m_dst->n = m_src.n;\
         memcpy(m_dst->s, m_src.s, m_src.n);\
     } else { abort(); }
@@ -206,8 +206,8 @@
  * Free SN
  */
 #define sn_free(m_pool, dst)\
-    if(dst.n > 0) {\
-        if(dst.s) hm_pfree(m_pool, dst.s);\
+    if (dst.n > 0) {\
+        if (dst.s) hm_pfree(m_pool, dst.s);\
         dst.s = NULL;\
         dst.n = 0;\
     }
@@ -384,7 +384,7 @@ inline static void gc_timestring(char *b, const int nb)
  */
 inline static int gc_fd_close(int fd)
 {
-    if(fd > STDERR_FILENO) return close(fd);
+    if (fd > STDERR_FILENO) return close(fd);
     else                   return GC_ERROR;
 }
 
@@ -399,7 +399,7 @@ inline static int gc_fd_setkeepalive(int fd)
     int optval       = 1;
     socklen_t optlen = sizeof(optval);
 
-    if(setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &optval, optlen) != 0) {
+    if (setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, &optval, optlen) != 0) {
         return GC_ERROR;
     }
 

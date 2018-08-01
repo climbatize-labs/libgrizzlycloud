@@ -22,11 +22,11 @@
 
 #define add_uint(m_pool, m_uint)\
     { int ret = add_int_intern(m_pool, dst, m_uint);\
-      if(ret != GCPROTO_OK) return ret; }
+      if (ret != GCPROTO_OK) return ret; }
 
 #define add_bin(m_pool, m_bin, m_nbin)\
     { int ret = add_intern(m_pool, dst, m_bin, m_nbin);\
-      if(ret != GCPROTO_OK) return ret; }
+      if (ret != GCPROTO_OK) return ret; }
 
 void gc_proto_dump(struct proto_s *p)
 {
@@ -178,7 +178,7 @@ static int get_int_intern(sn *src, int *value)
 {
     assert(src);
 
-    if((int)(src->offset + sizeof(int)) > src->n) {
+    if ((int)(src->offset + sizeof(int)) > src->n) {
         return GCPROTO_ERR;
     }
 
@@ -191,7 +191,7 @@ static int get_int_intern(sn *src, int *value)
 
 static int get_intern(sn *dst, sn *src)
 {
-    if(src->offset + (int)sizeof(int) > src->n) {
+    if (src->offset + (int)sizeof(int) > src->n) {
         return GCPROTO_ERR;
     }
 
@@ -232,7 +232,7 @@ int gc_serialize(struct hm_pool_s *pool, sn *dst, struct proto_s *src)
             add_intern(pool, dst, src->u.message_to.body.s, src->u.message_to.body.n);
             break;
         case MESSAGE_TO_SET_REPLY:
-            if(
+            if (
                 (sn_memcmp("ok", 2, src->u.message_to_set_reply.error.s, src->u.message_to_set_reply.error.n) == 0) ||
                 (sn_memcmp("ok_registered", 13, src->u.message_to_set_reply.error.s, src->u.message_to_set_reply.error.n) == 0) ||
                 (sn_memcmp("login", 5, src->u.message_to_set_reply.error.s, src->u.message_to_set_reply.error.n) == 0) ||
@@ -248,7 +248,7 @@ int gc_serialize(struct hm_pool_s *pool, sn *dst, struct proto_s *src)
         case ACCOUNT_LIST:
             break;
         case ACCOUNT_LIST_REPLY:
-            if(
+            if (
                 (sn_memcmp("ok", 2, src->u.account_list_reply.error.s, src->u.account_list_reply.error.n) == 0) ||
                 (sn_memcmp("general_failure", 15, src->u.account_list_reply.error.s, src->u.account_list_reply.error.n) == 0)                 ) {
                     add_intern(pool, dst, src->u.account_list_reply.error.s, src->u.account_list_reply.error.n);
@@ -261,7 +261,7 @@ int gc_serialize(struct hm_pool_s *pool, sn *dst, struct proto_s *src)
             break;
         case TRAFFIC_GET_REPLY:
             add_intern(pool, dst, src->u.traffic_get_reply.list.s, src->u.traffic_get_reply.list.n);
-            if(
+            if (
                 (sn_memcmp("ok", 2, src->u.traffic_get_reply.error.s, src->u.traffic_get_reply.error.n) == 0) ||
                 (sn_memcmp("ok_partial", 10, src->u.traffic_get_reply.error.s, src->u.traffic_get_reply.error.n) == 0) ||
                 (sn_memcmp("login", 5, src->u.traffic_get_reply.error.s, src->u.traffic_get_reply.error.n) == 0) ||
@@ -286,7 +286,7 @@ int gc_serialize(struct hm_pool_s *pool, sn *dst, struct proto_s *src)
             break;
         case DEVICE_PAIR_REPLY:
             add_intern(pool, dst, src->u.device_pair_reply.cloud.s, src->u.device_pair_reply.cloud.n);
-            if(
+            if (
                 (sn_memcmp("ok", 2, src->u.device_pair_reply.error.s, src->u.device_pair_reply.error.n) == 0) ||
                 (sn_memcmp("ok_registered", 13, src->u.device_pair_reply.error.s, src->u.device_pair_reply.error.n) == 0) ||
                 (sn_memcmp("login", 5, src->u.device_pair_reply.error.s, src->u.device_pair_reply.error.n) == 0) ||
@@ -306,7 +306,7 @@ int gc_serialize(struct hm_pool_s *pool, sn *dst, struct proto_s *src)
             add_intern(pool, dst, src->u.account_set.password.s, src->u.account_set.password.n);
             break;
         case ACCOUNT_SET_REPLY:
-            if(
+            if (
                 (sn_memcmp("ok", 2, src->u.account_set_reply.error.s, src->u.account_set_reply.error.n) == 0) ||
                 (sn_memcmp("denied", 6, src->u.account_set_reply.error.s, src->u.account_set_reply.error.n) == 0) ||
                 (sn_memcmp("already_exists", 14, src->u.account_set_reply.error.s, src->u.account_set_reply.error.n) == 0) ||
@@ -322,7 +322,7 @@ int gc_serialize(struct hm_pool_s *pool, sn *dst, struct proto_s *src)
             add_intern(pool, dst, src->u.account_login.devname.s, src->u.account_login.devname.n);
             break;
         case ACCOUNT_LOGIN_REPLY:
-            if(
+            if (
                 (sn_memcmp("ok", 2, src->u.account_login_reply.error.s, src->u.account_login_reply.error.n) == 0) ||
                 (sn_memcmp("ok_registered", 13, src->u.account_login_reply.error.s, src->u.account_login_reply.error.n) == 0) ||
                 (sn_memcmp("version", 7, src->u.account_login_reply.error.s, src->u.account_login_reply.error.n) == 0) ||
@@ -338,7 +338,7 @@ int gc_serialize(struct hm_pool_s *pool, sn *dst, struct proto_s *src)
             add_intern(pool, dst, src->u.account_exists.password.s, src->u.account_exists.password.n);
             break;
         case ACCOUNT_EXISTS_REPLY:
-            if(
+            if (
                 (sn_memcmp("ok", 2, src->u.account_exists_reply.error.s, src->u.account_exists_reply.error.n) == 0) ||
                 (sn_memcmp("invalid_login", 13, src->u.account_exists_reply.error.s, src->u.account_exists_reply.error.n) == 0) ||
                 (sn_memcmp("general_failure", 15, src->u.account_exists_reply.error.s, src->u.account_exists_reply.error.n) == 0)                 ) {
@@ -360,7 +360,7 @@ int gc_serialize(struct hm_pool_s *pool, sn *dst, struct proto_s *src)
 
 #define CRET(m_func)\
     ret = m_func;\
-    if(ret != GCPROTO_OK) return ret;
+    if (ret != GCPROTO_OK) return ret;
 
 int gc_deserialize(struct proto_s *dst, sn *src)
 {
@@ -371,7 +371,7 @@ int gc_deserialize(struct proto_s *dst, sn *src)
     int version;
     CRET(get_int(src, &version))
 
-    if(version != GCPROTO_VERSION) {
+    if (version != GCPROTO_VERSION) {
         return GCPROTO_ERR_VERSION;
     }
 

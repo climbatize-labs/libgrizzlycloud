@@ -4,7 +4,7 @@ struct gc_module_s module_webcam;
 
 static void client_data(struct gc_gen_client_s *client, char *buf, const int len)
 {
-    const char *tmpfile = "/tmp/gc_webcam";
+    const char *tmpfile = "/tmp/gcwebcam";
     char cmd[128];
 
     snprintf(cmd, sizeof(cmd), "fswebcam -r 640x480 --jpeg 85 -D 1 %s", tmpfile);
@@ -13,7 +13,7 @@ static void client_data(struct gc_gen_client_s *client, char *buf, const int len
     char *bin;
     int nbin = gc_fread(client->base.pool, &bin, tmpfile);
 
-    if(nbin <= 0) return;
+    if (nbin <= 0) return;
 
     char *buffer = hm_palloc(client->base.pool, sizeof(nbin) + nbin);
     assert(buffer);
@@ -30,7 +30,7 @@ static int start(struct gc_s *gc, struct gc_module_s *module)
 {
     hm_log(LOG_TRACE, &gc->log, "Starting module [%s]", module->name);
     module->server = hm_palloc(gc->pool, sizeof(*(module->server)));
-    if(!module->server) return GC_ERROR;
+    if (!module->server) return GC_ERROR;
 
     memset(module->server, 0, sizeof(*(module->server)));
 
@@ -46,7 +46,7 @@ static int start(struct gc_s *gc, struct gc_module_s *module)
 
     int ret;
     ret = async_server(module->server, gc, NULL);
-    if(ret != GC_OK) {
+    if (ret != GC_OK) {
         hm_pfree(gc->pool, module->server);
         module->server = NULL;
         return ret;
@@ -75,7 +75,7 @@ static int request(struct gc_s *gc, struct proto_s *p, char **argv, int argc)
     char *bin;
     int nbin = gc_fread(gc->pool, &bin, tmpfile);
 
-    if(nbin < 0) return GC_ERROR;
+    if (nbin < 0) return GC_ERROR;
 
     char header[64];
     snprintf(header, sizeof(header), "webcam_response");
@@ -93,7 +93,7 @@ static int request(struct gc_s *gc, struct proto_s *p, char **argv, int argc)
 
 static int stop(struct gc_s *gc, struct gc_module_s *module)
 {
-    if(module && module->server) {
+    if (module && module->server) {
         hm_log(LOG_TRACE, &gc->log, "Stopping module [%s]", module->name);
         async_server_shutdown(module->server);
         module->server = NULL;

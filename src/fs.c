@@ -28,7 +28,7 @@ void fs_pair(struct hm_log_s *log, struct gc_device_pair_s *pair)
                                        sn_p(pair->port_remote),
                                        sn_p(pair->port_local));
 
-    if(gc_fwrite(filename, "w", content, strlen(content)) != 0) {
+    if (gc_fwrite(filename, "w", content, strlen(content)) != 0) {
         hm_log(LOG_WARNING, log, "File [%s] couldn't be saved",
                                  filename);
     }
@@ -44,7 +44,7 @@ void fs_unpair(struct hm_log_s *log, snb *pid, int port_remote)
     init_filename(filename, sizeof(filename), pid, pr);
     printf("FS unpair: %s\n", filename);
 
-    if(gc_fremove(filename) != 0) {
+    if (gc_fremove(filename) != 0) {
         hm_log(LOG_WARNING, log, "File [%s] couldn't be deleted",
                                  filename);
     }

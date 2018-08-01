@@ -43,13 +43,13 @@ static int message_from(struct gc_s *gc, struct proto_s *p)
 
     ret = gc_parse_delimiter(gc->pool, p->u.message_from.tp,
                              &argv, &argc, '/');
-    if(ret != GC_OK) {
-        if(argv) hm_pfree(gc->pool, argv);
+    if (ret != GC_OK) {
+        if (argv) hm_pfree(gc->pool, argv);
         return ret;
     }
 
-    if(argc < 1) {
-        if(argv) hm_pfree(gc->pool, argv);
+    if (argc < 1) {
+        if (argv) hm_pfree(gc->pool, argv);
         return GC_ERROR;
     }
 
@@ -59,24 +59,24 @@ static int message_from(struct gc_s *gc, struct proto_s *p)
     sn_initz(update, "tunnel_update");
     sn_initz(estop, "endpoint_stop");
 
-    if(sn_cmps(type, request)) {
+    if (sn_cmps(type, request)) {
         ret = gc_endpoint_request(gc, p, argv, argc);
-        if(ret != GC_OK) {
+        if (ret != GC_OK) {
             hm_log(LOG_TRACE, &gc->log, "Tunnel request failed");
         }
-    } else if(sn_cmps(type, response)) {
+    } else if (sn_cmps(type, response)) {
         ret = gc_tunnel_response(gc, p, argv, argc);
-        if(ret != GC_OK) {
+        if (ret != GC_OK) {
             hm_log(LOG_TRACE, &gc->log, "Tunnel reponse failed");
         }
-    } else if(sn_cmps(type, update)) {
+    } else if (sn_cmps(type, update)) {
         ret = gc_tunnel_update(gc, p, argv, argc);
-        if(ret != GC_OK) {
+        if (ret != GC_OK) {
             hm_log(LOG_TRACE, &gc->log, "Tunnel update failed");
         }
-    } else if(sn_cmps(type, estop)) {
+    } else if (sn_cmps(type, estop)) {
         ret = endpoint_stop(gc, p, argv, argc);
-        if(ret != GC_OK) {
+        if (ret != GC_OK) {
             hm_log(LOG_TRACE, &gc->log, "Endpoint stop failed");
         }
     } else {
@@ -91,12 +91,12 @@ static int message_from(struct gc_s *gc, struct proto_s *p)
 static void pairs_offline(struct gc_s *gc, sn address)
 {
     int i;
-    for(i = 0; i < gc->config.ntunnels; i++) {
-        if(address.n == 0) {
-            if(sn_len(gc->config.tunnels[i].pid) > 0)
+    for (i = 0; i < gc->config.ntunnels; i++) {
+        if (address.n == 0) {
+            if (sn_len(gc->config.tunnels[i].pid) > 0)
                 fs_unpair(&gc->log, &gc->config.tunnels[i].pid, gc->config.tunnels[i].port_local);
             gc->config.tunnels[i].pid.n = 0;
-        } else if(sn_cmps(gc->config.tunnels[i].pid, address)) {
+        } else if (sn_cmps(gc->config.tunnels[i].pid, address)) {
             hm_log(LOG_TRACE, &gc->log, "Tunnel marking pair [cloud:device:port:port_local] [%.*s:%.*s:%d:%d] offline",
                                       sn_p(gc->config.tunnels[i].cloud),
                                       sn_p(gc->config.tunnels[i].device),
@@ -127,7 +127,7 @@ static void gc_upstream_force_stop(struct ev_loop *loop)
 {
     hm_log(LOG_TRACE, &gclocal->log, "Upstream force stop");
     ev_timer_stop(loop, &gclocal->connect_timer);
-    if(gclocal->client.base.active) {
+    if (gclocal->client.base.active) {
         async_client_ssl_shutdown(&gclocal->client);
         gclocal->client.base.active = 0;
     }
@@ -150,7 +150,7 @@ static void upstream_error(struct gc_gen_client_ssl_s *c, enum gcerr_e error)
 
     gc_tunnel_stop_all(c->base.pool, c->base.log);
     gc_endpoints_stop_all();
-    if(c->base.active) {
+    if (c->base.active) {
         async_client_ssl_shutdown(c);
         c->base.active = 0;
     }
@@ -164,22 +164,22 @@ static void callback_error(struct gc_gen_client_ssl_s *c, enum gcerr_e error)
 
 static void device_pair_reply(struct gc_s *gc, struct gc_device_pair_s *pair)
 {
-    if(gc_tunnel_add(gc, pair, pair->type) != GC_OK) {
+    if (gc_tunnel_add(gc, pair, pair->type) != GC_OK) {
         gc_force_stop();
         return;
     }
 
     sn_initz(forced, "forced");
-    if(sn_cmps(pair->type, forced)) {
+    if (sn_cmps(pair->type, forced)) {
         return;
     }
 
     int i;
-    for(i = 0; i < gc->config.ntunnels; i++) {
+    for (i = 0; i < gc->config.ntunnels; i++) {
         sn_itoa(port,       gc->config.tunnels[i].port, 8);
         sn_itoa(port_local, gc->config.tunnels[i].port_local,  8);
 
-        if(sn_cmps(gc->config.tunnels[i].cloud, pair->cloud) &&
+        if (sn_cmps(gc->config.tunnels[i].cloud, pair->cloud) &&
            sn_cmps(gc->config.tunnels[i].device, pair->device) &&
            sn_cmps(port, pair->port_remote) &&
            sn_cmps(port_local, pair->port_local)) {
@@ -206,7 +206,7 @@ static void traffic_mi(struct gc_s *gc)
 
     int ret;
     ret = gc_packet_send(gc, &pr);
-    if(ret != GC_OK) CALLBACK_ERROR(&gc->log, "traffic_mi");
+    if (ret != GC_OK) CALLBACK_ERROR(&gc->log, "traffic_mi");
 }
 
 static void devices_pair(struct ev_loop *loop, struct ev_timer *timer, int revents)
@@ -216,8 +216,8 @@ static void devices_pair(struct ev_loop *loop, struct ev_timer *timer, int reven
     assert(gc);
 
     int i;
-    for(i = 0; i < gc->config.ntunnels; i++) {
-        if(sn_len(gc->config.tunnels[i].pid) != 0) continue;
+    for (i = 0; i < gc->config.ntunnels; i++) {
+        if (sn_len(gc->config.tunnels[i].pid) != 0) continue;
 
         struct proto_s pr = { .type = DEVICE_PAIR };
         sn_set(pr.u.device_pair.cloud,       gc->config.tunnels[i].cloud);
@@ -235,15 +235,15 @@ static void devices_pair(struct ev_loop *loop, struct ev_timer *timer, int reven
                                     sn_p(port), sn_p(port_local));
         int ret;
         ret = gc_packet_send(gc, &pr);
-        if(ret != GC_OK) CALLBACK_ERROR(&gc->log, "device_pair");
+        if (ret != GC_OK) CALLBACK_ERROR(&gc->log, "device_pair");
     }
 }
 
 static void modules_stop(struct gc_s *gc)
 {
     int i;
-    for(i = 0; i < MAX_MODULES; i++) {
-        if(modules_available[i]->stop)
+    for (i = 0; i < MAX_MODULES; i++) {
+        if (modules_available[i]->stop)
             modules_available[i]->stop(gc, modules_available[i]);
     }
 }
@@ -251,10 +251,10 @@ static void modules_stop(struct gc_s *gc)
 static enum gc_e modules_start(struct gc_s *gc)
 {
     int i;
-    for(i = 0; i < MAX_MODULES; i++) {
-        if((gc->modules & modules_available[i]->id) &&
+    for (i = 0; i < MAX_MODULES; i++) {
+        if ((gc->modules & modules_available[i]->id) &&
             modules_available[i]->start)
-            if(modules_available[i]->start(gc, modules_available[i]) != GC_OK)
+            if (modules_available[i]->start(gc, modules_available[i]) != GC_OK)
                 return GC_ERROR;
     }
 
@@ -266,9 +266,9 @@ static void client_logged(struct gc_s *gc, sn error)
     sn_initz(ok, "ok");
     sn_initz(ok_reg, "ok_registered");
 
-    if(sn_cmps(ok, error)) {
+    if (sn_cmps(ok, error)) {
         sn_initz(traffic, "traffic");
-        if(sn_cmps(gc->config.action, traffic)) {
+        if (sn_cmps(gc->config.action, traffic)) {
             traffic_mi(gc);
         } else {
             ev_init(&gc->config.pair_timer, devices_pair);
@@ -276,7 +276,7 @@ static void client_logged(struct gc_s *gc, sn error)
             gc->config.pair_timer.data = gc;
             ev_timer_again(gc->loop, &gc->config.pair_timer);
         }
-    } else if(!sn_cmps(ok_reg, error)) {
+    } else if (!sn_cmps(ok_reg, error)) {
         gc_force_stop();
     }
 }
@@ -286,20 +286,20 @@ static void parse_traffic(struct gc_s *gc, sn error, sn list)
     int i;
     char *s = list.s;
 
-    if(list.n == 0) {
+    if (list.n == 0) {
         sn_initz(type,     "");
         sn_initz(cloud,    "");
         sn_initz(device,   "");
         sn_initz(upload,   "");
         sn_initz(download, "");
-        if(gc->callback.traffic) gc->callback.traffic(gc, error, type, cloud,
+        if (gc->callback.traffic) gc->callback.traffic(gc, error, type, cloud,
                                                       device, upload, download);
         return;
     }
 
-    for(i = 0; ; ) {
+    for (i = 0; ; ) {
 #define PT(m_dst)\
-        if(i >= list.n) break;\
+        if (i >= list.n) break;\
         sn m_dst = { .n = *(int *)(s + i), .s = s + i + sizeof(int) };\
         gc_swap_memory((void *)&m_dst.n, sizeof(m_dst.n));\
         i += sizeof(int) + m_dst.n;
@@ -310,19 +310,19 @@ static void parse_traffic(struct gc_s *gc, sn error, sn list)
         PT(upload);
         PT(download);
 
-        if(gc->callback.traffic) gc->callback.traffic(gc, error, type, cloud,
+        if (gc->callback.traffic) gc->callback.traffic(gc, error, type, cloud,
                                                       device, upload, download);
     }
 }
 
 static void state_changed(struct gc_s *gc, enum gc_state_e state)
 {
-    if(state == GC_HANDSHAKE_SUCCESS) {
+    if (state == GC_HANDSHAKE_SUCCESS) {
         ev_timer_again(gc->loop, &gc->hang_timer);
         ev_timer_again(gc->loop, &gc->ping_timer);
     }
 
-    if(gc && gc->callback.state_changed)
+    if (gc && gc->callback.state_changed)
         gc->callback.state_changed(gc, state);
 }
 
@@ -345,14 +345,14 @@ static void ping(struct ev_loop *loop, struct ev_timer *timer, int revents)
 
     int ret;
     ret = gc_packet_send(gc, &pr);
-    if(ret != GC_OK) CALLBACK_ERROR(&gc->log, "ping_set");
+    if (ret != GC_OK) CALLBACK_ERROR(&gc->log, "ping_set");
 }
 
 static void callback_data(struct gc_s *gc, const void *buffer, const int nbuffer)
 {
     struct proto_s p;
     sn src = { .s = (char *)buffer + 4, .n = nbuffer - 4 };
-    if(gc_deserialize(&p, &src) != 0) {
+    if (gc_deserialize(&p, &src) != 0) {
         hm_log(LOG_ERR, &gc->log, "Parsing failed");
         return;
     }
@@ -365,19 +365,19 @@ static void callback_data(struct gc_s *gc, const void *buffer, const int nbuffer
 
     switch(p.type) {
         case ACCOUNT_LOGIN_REPLY:
-            if(gc->callback.login)
+            if (gc->callback.login)
                 gc->callback.login(gc, p.u.account_login_reply.error);
 
             client_logged(gc, p.u.account_login_reply.error);
         break;
         case DEVICE_PAIR_REPLY: {
             sn_initz(ok, "ok");
-            if(sn_cmps(ok, p.u.device_pair_reply.error)) {
+            if (sn_cmps(ok, p.u.device_pair_reply.error)) {
                 sn list = p.u.device_pair_reply.list;
 
 // WARNING: not alligned, endian ignorant
 #define READ(m_var)\
-            if(i < list.n) {\
+            if (i < list.n) {\
                 m_var.n = *(int *)(&((list.s)[i]));\
                 /* Swap memory because of server high endian */\
                 gc_swap_memory((void *)&m_var.n, sizeof(m_var.n));\
@@ -386,7 +386,7 @@ static void callback_data(struct gc_s *gc, const void *buffer, const int nbuffer
             }
 
 #define READCPY(m_var)\
-            if(i < list.n) {\
+            if (i < list.n) {\
                 m_var.n = *(int *)(&((list.s)[i]));\
                 /* Swap memory because of server high endian */\
                 gc_swap_memory((void *)&m_var.n, sizeof(m_var.n));\
@@ -396,7 +396,7 @@ static void callback_data(struct gc_s *gc, const void *buffer, const int nbuffer
             }
 
                 int i;
-                for(i = 0; i < list.n; i++) {
+                for (i = 0; i < list.n; i++) {
                     struct gc_device_pair_s pair;
                     sn_set(pair.cloud, p.u.device_pair_reply.cloud);
                     READ(pair.pid);
@@ -429,12 +429,12 @@ static void callback_data(struct gc_s *gc, const void *buffer, const int nbuffer
             }
         break;
         case ACCOUNT_SET_REPLY: {
-                if(gc->callback.account_set) gc->callback.account_set(gc, p.u.account_set_reply.error);
+                if (gc->callback.account_set) gc->callback.account_set(gc, p.u.account_set_reply.error);
                 gc_force_stop();
             }
         break;
         case ACCOUNT_EXISTS_REPLY: {
-                if(gc->callback.account_exists) gc->callback.account_exists(gc, p.u.account_exists_reply.error);
+                if (gc->callback.account_exists) gc->callback.account_exists(gc, p.u.account_exists_reply.error);
                 gc_force_stop();
             }
         break;
@@ -473,7 +473,7 @@ static void upstream_connect(struct ev_loop *loop, struct ev_timer *timer, int r
 
 void gc_deinit(struct gc_s *gc)
 {
-    if(gc->net.buf.s) hm_pfree(gc->pool, gc->net.buf.s);
+    if (gc->net.buf.s) hm_pfree(gc->pool, gc->net.buf.s);
 
     hm_log_close(&gc->log);
 
@@ -497,7 +497,7 @@ void gc_deinit(struct gc_s *gc)
 
 static void sigh_terminate(int __attribute__ ((unused)) signo)
 {
-    if(gc_sigterm == 1) return;
+    if (gc_sigterm == 1) return;
 
     gc_sigterm = 1;
     hm_log(LOG_TRACE, &gclocal->log, "Received SIGTERM");
@@ -512,7 +512,7 @@ static void gc_signals(struct gc_s *gc)
     act.sa_flags = 0;
     act.sa_handler = SIG_IGN;
 
-    if(sigaction(SIGPIPE, &act, NULL) < 0) {
+    if (sigaction(SIGPIPE, &act, NULL) < 0) {
         hm_log(LOG_CRIT, &gc->log, "Sigaction cannot be examined");
     }
 
@@ -520,12 +520,12 @@ static void gc_signals(struct gc_s *gc)
 
     act.sa_flags = 0;
     act.sa_handler = sigh_terminate;
-    if(sigaction(SIGINT, &act, NULL) < 0) {
+    if (sigaction(SIGINT, &act, NULL) < 0) {
         hm_log(LOG_CRIT, &gc->log, "Unable to register SIGINT signal handler: %s", strerror(errno));
         exit(1);
     }
 
-    if(sigaction(SIGTERM, &act, NULL) < 0) {
+    if (sigaction(SIGTERM, &act, NULL) < 0) {
         hm_log(LOG_CRIT, &gc->log, "Unable to register SIGTERM signal handler: %s", strerror(errno));
         exit(1);
     }
@@ -537,13 +537,13 @@ static int config_init(struct hm_pool_s *pool, struct gc_config_s *cfg,
     int ret;
 
     ret = gc_config_parse(pool, cfg, cfgfile);
-    if(ret != GC_OK) {
+    if (ret != GC_OK) {
         hm_log(LOG_CRIT, cfg->log, "Parsing config file [%s] failed", cfgfile);
         return GC_ERROR;
     }
 
     ret = gc_backend_parse(pool, cfg, backendfile);
-    if(ret != GC_OK) {
+    if (ret != GC_OK) {
         hm_log(LOG_CRIT, cfg->log, "Parsing backend file [%s] failed", backendfile);
         return GC_ERROR;
     }
@@ -558,21 +558,21 @@ static int config_required(struct gc_config_s *cfg)
 {
     assert(cfg);
 
-    if((cfg->username.n == 0 || cfg->password.n == 0) ||
+    if ((cfg->username.n == 0 || cfg->password.n == 0) ||
         (cfg->device.n == 0 && cfg->action.n == 0)) {
         hm_log(LOG_CRIT, cfg->log, "Username, password and device or action must be set");
         return GC_ERROR;
     }
 
-    if(cfg->ntunnels == 0 && cfg->nallowed == 0 && cfg->action.n == 0) {
+    if (cfg->ntunnels == 0 && cfg->nallowed == 0 && cfg->action.n == 0) {
         hm_log(LOG_CRIT, cfg->log, "Neither tunnels, allowed ports nor action specified");
         return GC_ERROR;
     }
 
-    if(cfg->ntunnels > 0 && cfg->nallowed > 0) cfg->type = GC_TYPE_HYBRID;
-    else if(cfg->ntunnels > 0)                 cfg->type = GC_TYPE_CLIENT;
-    else if(cfg->nallowed > 0)                 cfg->type = GC_TYPE_SERVER;
-    else if(cfg->action.n > 0)                 cfg->type = GC_TYPE_ACTION;
+    if (cfg->ntunnels > 0 && cfg->nallowed > 0) cfg->type = GC_TYPE_HYBRID;
+    else if (cfg->ntunnels > 0)                 cfg->type = GC_TYPE_CLIENT;
+    else if (cfg->nallowed > 0)                 cfg->type = GC_TYPE_SERVER;
+    else if (cfg->action.n > 0)                 cfg->type = GC_TYPE_ACTION;
     else                                       return GC_ERROR;
 
     return GC_OK;
@@ -588,14 +588,14 @@ struct gc_s *gc_init(struct gc_init_s *init)
 
     struct hm_pool_s *pool = hm_create_pool();
 
-    if(pool == NULL) {
+    if (pool == NULL) {
         return NULL;
     }
 
     gc = gclocal = hm_palloc(pool, sizeof(*gc));
     memset(gc, 0, sizeof(*gc));
 
-    if(hm_log_open(&gc->log, init->logfile, init->loglevel) != GC_OK) {
+    if (hm_log_open(&gc->log, init->logfile, init->loglevel) != GC_OK) {
         return NULL;
     }
 
@@ -610,12 +610,12 @@ struct gc_s *gc_init(struct gc_init_s *init)
                                                           EV_VERSION_MINOR);
 
     gc->config.log = &gc->log;
-    if(config_init(gc->pool, &gc->config, init->cfgfile, init->backendfile) != GC_OK) {
+    if (config_init(gc->pool, &gc->config, init->cfgfile, init->backendfile) != GC_OK) {
         hm_log(LOG_CRIT, &gc->log, "Could not initialize config file");
         return NULL;
     }
 
-    if(config_required(&gc->config) != GC_OK) {
+    if (config_required(&gc->config) != GC_OK) {
         hm_log(LOG_CRIT, &gc->log, "Mandatory configuration parameters are missing");
         return NULL;
     }
@@ -631,7 +631,7 @@ struct gc_s *gc_init(struct gc_init_s *init)
 
     gc->internal.state_changed   = state_changed;
 
-    if(gc_backend_init(gc, &gc->hostname) != GC_OK) {
+    if (gc_backend_init(gc, &gc->hostname) != GC_OK) {
         return NULL;
     }
 
@@ -641,7 +641,7 @@ struct gc_s *gc_init(struct gc_init_s *init)
     // Initialize signals
     gc_signals(gc);
 
-    if(SSL_library_init() < 0) {
+    if (SSL_library_init() < 0) {
         hm_log(LOG_CRIT, &gc->log, "Could not initialize OpenSSL library");
         return NULL;
     }
@@ -666,7 +666,7 @@ struct gc_s *gc_init(struct gc_init_s *init)
     gc->shutdown_timer.repeat = 0.1;
     gc->shutdown_timer.data = gc;
 
-    if(modules_start(gc) != GC_OK) {
+    if (modules_start(gc) != GC_OK) {
         hm_log(LOG_CRIT, &gc->log, "Modules initialization failed");
         return NULL;
     }

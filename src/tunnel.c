@@ -26,15 +26,15 @@ static struct gc_gen_client_s *tunnel_client_find(sn port, sn fd)
     struct gc_tunnel_s *t;
     struct ht_s *kv;
 
-    for(t = tunnels; t != NULL; t = t->next) {
-        if(!sn_cmps(t->port_remote, port)) continue;
-        if(!(t->server && t->server->clients)) continue;
+    for (t = tunnels; t != NULL; t = t->next) {
+        if (!sn_cmps(t->port_remote, port)) continue;
+        if (!(t->server && t->server->clients)) continue;
 
         char key[16];
         snprintf(key, sizeof(key), "%.*s", sn_p(fd));
         kv = ht_get(t->server->clients, key, strlen(key));
 
-        if(!kv) continue;
+        if (!kv) continue;
 
         return (struct gc_gen_client_s *)kv->s;
     }
@@ -46,14 +46,14 @@ int gc_tunnel_update(struct gc_s *gc, struct proto_s *p, char **argv, int argc)
 {
     struct gc_tunnel_s *t;
 
-    if(argc != 6) {
+    if (argc != 6) {
         return GC_ERROR;
     }
 
-    for(t = tunnels; t != NULL; t = t->next) {
+    for (t = tunnels; t != NULL; t = t->next) {
 #define CMP(m_dst, m_src)\
     sn_memcmp(m_dst, strlen(m_dst), m_src.s, m_src.n)
-        if(CMP(argv[1], t->cloud) &&
+        if (CMP(argv[1], t->cloud) &&
            CMP(argv[2], t->device) &&
            CMP(argv[3], t->port_local) &&
            CMP(argv[4], t->port_remote)) {
@@ -69,7 +69,7 @@ int gc_tunnel_update(struct gc_s *gc, struct proto_s *p, char **argv, int argc)
 
 int gc_tunnel_response(struct gc_s *gc, struct proto_s *p, char **argv, int argc)
 {
-    if(argc != 3) {
+    if (argc != 3) {
         return GC_ERROR;
     }
 
@@ -81,7 +81,7 @@ int gc_tunnel_response(struct gc_s *gc, struct proto_s *p, char **argv, int argc
                                 sn_p(fd));
 
     struct gc_gen_client_s *client = tunnel_client_find(port, fd);
-    if(!client) {
+    if (!client) {
         hm_log(LOG_TRACE, &gc->log, "Tunnel client not found");
         return GC_ERROR;
     }
@@ -130,7 +130,7 @@ static int alloc_server(struct gc_s *gc, struct gc_gen_server_s **c,
                         snb port_local, snb *new_port_local)
 {
     *c = hm_palloc(gc->pool, sizeof(**c));
-    if(!*c) return GC_ERROR;
+    if (!*c) return GC_ERROR;
 
     memset(*c, 0, sizeof(**c));
 
@@ -145,7 +145,7 @@ static int alloc_server(struct gc_s *gc, struct gc_gen_server_s **c,
 
     int ret;
     ret = async_server(*c, gc, new_port_local);
-    if(ret != GC_OK) {
+    if (ret != GC_OK) {
         hm_pfree(gc->pool, *c);
         return ret;
     }
@@ -174,14 +174,14 @@ static void port_update(struct gc_s *gc, struct gc_device_pair_s *pair,
 
     int ret;
     ret = gc_packet_send(gc, &pr);
-    if(ret != GC_OK) CALLBACK_ERROR(&gc->log, "update_port_local");
+    if (ret != GC_OK) CALLBACK_ERROR(&gc->log, "update_port_local");
 
     int i;
-    for(i = 0; i < gc->config.ntunnels; i++) {
+    for (i = 0; i < gc->config.ntunnels; i++) {
         sn_itoa(port,       gc->config.tunnels[i].port, 8);
         sn_itoa(port_local, gc->config.tunnels[i].port_local,  8);
 
-        if(sn_cmps(gc->config.tunnels[i].cloud, pair->cloud) &&
+        if (sn_cmps(gc->config.tunnels[i].cloud, pair->cloud) &&
            sn_cmps(gc->config.tunnels[i].device, pair->device) &&
            sn_cmps(port, pair->port_remote) &&
            sn_cmps(port_local, pair->port_local)) {
@@ -198,20 +198,20 @@ int gc_tunnel_add(struct gc_s *gc, struct gc_device_pair_s *pair, sn type)
     struct gc_gen_server_s *c = NULL;
 
     sn_initz(forced, "forced");
-    if(!sn_cmps(type, forced)) {
+    if (!sn_cmps(type, forced)) {
         snb new_port_local;
         int ret;
         ret = alloc_server(gc, &c, pair->port_local, &new_port_local);
-        if(ret != GC_OK) return ret;
+        if (ret != GC_OK) return ret;
 
         sn_atoi(port_local, pair->port_local, 32)
-        if(port_local == 0) {
+        if (port_local == 0) {
             port_update(gc, pair, new_port_local);
         }
     }
 
     struct gc_tunnel_s *t = hm_palloc(gc->pool, sizeof(*t));
-    if(!t) return GC_ERROR;
+    if (!t) return GC_ERROR;
 
     memset(t, 0, sizeof(*t));
 
@@ -224,7 +224,7 @@ int gc_tunnel_add(struct gc_s *gc, struct gc_device_pair_s *pair, sn type)
 
     // Link tunnel and server
     t->server = c;
-    if(c) c->tunnel = t;
+    if (c) c->tunnel = t;
 
     t->next = tunnels;
     tunnels = t;
@@ -235,12 +235,12 @@ int gc_tunnel_add(struct gc_s *gc, struct gc_device_pair_s *pair, sn type)
 void gc_tunnel_stop(struct hm_pool_s *pool, struct hm_log_s *log, sn pid)
 {
     struct gc_tunnel_s *t, *prev, *del;
-    for(t = tunnels, prev = NULL; t != NULL; ) {
-        if(sn_cmps(t->pid, pid)) {
+    for (t = tunnels, prev = NULL; t != NULL; ) {
+        if (sn_cmps(t->pid, pid)) {
 
             sn_atoi(pr, t->port_remote, 32);
             fs_unpair(log, &t->pid, pr);
-            if(t->server) {
+            if (t->server) {
                 hm_log(LOG_TRACE, t->server->log, "Tunnel stop [cloud:device:port:port_remote] [%.*s:%.*s:%.*s:%.*s]",
                                                   sn_p(t->cloud),
                                                   sn_p(t->device),
@@ -249,7 +249,7 @@ void gc_tunnel_stop(struct hm_pool_s *pool, struct hm_log_s *log, sn pid)
                 async_server_shutdown(t->server);
             }
 
-            if(prev) prev->next = t->next;
+            if (prev) prev->next = t->next;
             else     tunnels = t->next;
 
             del = t;
@@ -266,10 +266,10 @@ void gc_tunnel_stop_all(struct hm_pool_s *pool, struct hm_log_s *log)
 {
     struct gc_tunnel_s *t, *del;
 
-    for(t = tunnels; t != NULL; ) {
+    for (t = tunnels; t != NULL; ) {
         sn_atoi(pr, t->port_remote, 32);
         fs_unpair(log, &t->pid, pr);
-        if(t->server) async_server_shutdown(t->server);
+        if (t->server) async_server_shutdown(t->server);
         del = t;
         t = t->next;
         hm_pfree(pool, del);

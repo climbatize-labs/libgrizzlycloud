@@ -28,10 +28,10 @@ static void endpoint_stop_client(struct gc_gen_client_s *c)
 
     assert(c);
 
-    for(ent = endpoints; ent != NULL; prev = ent, ent = ent->next) {
-        if(ent->client == c) {
+    for (ent = endpoints; ent != NULL; prev = ent, ent = ent->next) {
+        if (ent->client == c) {
 
-            if(prev) prev->next = ent->next;
+            if (prev) prev->next = ent->next;
             else endpoints = ent->next;
 
             hm_log(LOG_TRACE, c->base.log, "Removed endpoint on fd [%.*s]",
@@ -48,8 +48,8 @@ static int port_allowed(struct gc_s *gc, sn backend_port)
     int i;
     sn_atoi(port, backend_port, 8);
 
-    for(i = 0; i < gc->config.nallowed; i++) {
-        if(gc->config.allowed[i] == port) {
+    for (i = 0; i < gc->config.nallowed; i++) {
+        if (gc->config.allowed[i] == port) {
             return GC_OK;
         }
     }
@@ -63,8 +63,8 @@ static void endpoint_recv(struct gc_gen_client_s *client, char *buf, int len)
 
     assert(client);
 
-    for(ent = endpoints; ent != NULL; ent = ent->next) {
-        if(ent->client == client) {
+    for (ent = endpoints; ent != NULL; ent = ent->next) {
+        if (ent->client == client) {
 
             // Message header
             char header[64];
@@ -110,7 +110,7 @@ static int endpoint_add(sn key, sn remote_fd, sn backend_port,
 {
     struct gc_endpoint_s *ent;
     ent = hm_palloc(gc->pool, sizeof(*ent));
-    if(!ent) return GC_ERROR;
+    if (!ent) return GC_ERROR;
 
     snb_cpy_ds(ent->key,          key);
     snb_cpy_ds(ent->remote_fd,    remote_fd);
@@ -120,7 +120,7 @@ static int endpoint_add(sn key, sn remote_fd, sn backend_port,
     *ep = ent;
 
     struct gc_gen_client_s *client = hm_palloc(gc->pool, sizeof(*client));
-    if(!client) return GC_ERROR;
+    if (!client) return GC_ERROR;
 
     memset(client, 0, sizeof(*client));
 
@@ -147,7 +147,7 @@ static int endpoint_add(sn key, sn remote_fd, sn backend_port,
 
     int ret;
     ret = async_client(client);
-    if(ret != GC_OK) return GC_ERROR;
+    if (ret != GC_OK) return GC_ERROR;
 
     hm_log(LOG_TRACE, client->base.log, "Endpoint added [remote_fd:backend_port:remote_port] [%.*s:%.*s:%.*s]",
                                         sn_p(remote_fd), sn_p(backend_port), sn_p(remote_port));
@@ -158,8 +158,8 @@ static int endpoint_add(sn key, sn remote_fd, sn backend_port,
 static struct gc_endpoint_s *endpoint_find(sn key)
 {
     struct gc_endpoint_s *ent;
-    for(ent = endpoints; ent != NULL; ent = ent->next) {
-        if(sn_cmps(ent->key, key)) {
+    for (ent = endpoints; ent != NULL; ent = ent->next) {
+        if (sn_cmps(ent->key, key)) {
             return ent;
         }
     }
@@ -171,8 +171,8 @@ void gc_endpoints_stop_all(struct hm_pool_s *pool)
 {
     struct gc_endpoint_s *ent, *del;
 
-    for(ent = endpoints; ent != NULL; ) {
-        if(ent->client) {
+    for (ent = endpoints; ent != NULL; ) {
+        if (ent->client) {
             async_client_shutdown(ent->client);
         }
         del = ent;
@@ -185,13 +185,13 @@ void gc_endpoints_stop_all(struct hm_pool_s *pool)
 
 int gc_endpoint_request(struct gc_s *gc, struct proto_s *p, char **argv, int argc)
 {
-    if(argc != 4) {
+    if (argc != 4) {
         return GC_ERROR;
     }
 
     sn_initr(backend_port, argv[1], strlen(argv[1]));
 
-    if(port_allowed(gc, backend_port) != GC_OK) {
+    if (port_allowed(gc, backend_port) != GC_OK) {
         char header[64];
         snprintf(header, sizeof(header), "tunnel_denied/%.*s",
                                          sn_p(backend_port));
@@ -216,14 +216,14 @@ int gc_endpoint_request(struct gc_s *gc, struct proto_s *p, char **argv, int arg
 
     struct gc_endpoint_s *ep = endpoint_find(key);
 
-    if(!ep) {
+    if (!ep) {
         sn_initr(remote_port,  argv[3], strlen(argv[3]));
         sn_init(pid, p->u.message_from.from_address);
 
         int ret;
         ret = endpoint_add(key, fd, backend_port, remote_port,
                            pid, &ep, gc);
-        if(ret != GC_OK) return ret;
+        if (ret != GC_OK) return ret;
 
         hm_log(LOG_TRACE, &gc->log, "Adding endpoint");
     } else {
@@ -248,12 +248,12 @@ void gc_endpoint_stop(struct hm_pool_s *pool, struct hm_log_s *log,
     struct gc_endpoint_s *prev = NULL;
     struct gc_endpoint_s *ent;
 
-    for(ent = endpoints; ent != NULL; prev = ent, ent = ent->next) {
-        if(sn_cmps(ent->pid, address)) {
+    for (ent = endpoints; ent != NULL; prev = ent, ent = ent->next) {
+        if (sn_cmps(ent->pid, address)) {
 
             async_client_shutdown(ent->client);
 
-            if(prev) prev->next = ent->next;
+            if (prev) prev->next = ent->next;
             else endpoints = ent->next;
 
             hm_log(LOG_TRACE, log, "Removed endpoint [cloud:device:remote_fd:backend_port]\
