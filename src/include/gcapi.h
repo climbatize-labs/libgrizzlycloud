@@ -155,11 +155,12 @@ struct gc_init_s {
 
     struct {
         void (*state_changed)(struct gc_s *gc, enum gc_state_e state);       /**< Upstream socket state cb. */
-        void (*login)(struct gc_s *gc, sn error);                            /**< Login callback. */
+        void (*login)(struct gc_s *gc, sn error, sn data);                   /**< Login callback. */
         void (*traffic)(struct gc_s *gc, sn error, sn type, sn cloud,
                         sn device, sn upload, sn download);                  /**< Traffic callback. */
         void (*account_set)(struct gc_s *gc, sn error);                      /**< Account set callback. */
-        void (*account_exists)(struct gc_s *gc, sn error);                   /**< Account exists callback. */
+        void (*account_exists)(struct gc_s *gc, sn error, sn data);          /**< Account exists callback. */
+        void (*account_data_set)(struct gc_s *gc, sn error);                 /**< Account data set callback. */
     } callback;
 };
 
@@ -188,11 +189,12 @@ struct gc_s {
 
     struct {
         void (*state_changed)(struct gc_s *gc, enum gc_state_e state);       /**< Upstream socket state cb. */
-        void (*login)(struct gc_s *gc, sn error);                            /**< Login callback. */
+        void (*login)(struct gc_s *gc, sn error, sn data);                   /**< Login callback. */
         void (*traffic)(struct gc_s *gc, sn error, sn type, sn cloud,
                         sn device, sn upload, sn download);                  /**< Traffic callback. */
         void (*account_set)(struct gc_s *gc, sn error);                      /**< Account set callback. */
-        void (*account_exists)(struct gc_s *gc, sn error);                   /**< Account exists callback. */
+        void (*account_exists)(struct gc_s *gc, sn error, sn data);          /**< Account exists callback. */
+        void (*account_data_set)(struct gc_s *gc, sn error);                 /**< Account data set. */
     } callback;
 
     struct {

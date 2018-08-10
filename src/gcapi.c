@@ -366,7 +366,7 @@ static void callback_data(struct gc_s *gc, const void *buffer, const int nbuffer
     switch(p.type) {
         case ACCOUNT_LOGIN_REPLY:
             if (gc->callback.login)
-                gc->callback.login(gc, p.u.account_login_reply.error);
+                gc->callback.login(gc, p.u.account_login_reply.error, p.u.account_login_reply.data);
 
             client_logged(gc, p.u.account_login_reply.error);
         break;
@@ -434,7 +434,12 @@ static void callback_data(struct gc_s *gc, const void *buffer, const int nbuffer
             }
         break;
         case ACCOUNT_EXISTS_REPLY: {
-                if (gc->callback.account_exists) gc->callback.account_exists(gc, p.u.account_exists_reply.error);
+                if (gc->callback.account_exists) gc->callback.account_exists(gc, p.u.account_exists_reply.error, p.u.account_exists_reply.data);
+                gc_force_stop();
+            }
+        break;
+        case ACCOUNT_DATA_SET_REPLY: {
+                if (gc->callback.account_data_set) gc->callback.account_data_set(gc, p.u.account_data_set_reply.error);
                 gc_force_stop();
             }
         break;
@@ -627,6 +632,7 @@ struct gc_s *gc_init(struct gc_init_s *init)
     gc->callback.traffic         = init->callback.traffic;
     gc->callback.account_set     = init->callback.account_set;
     gc->callback.account_exists  = init->callback.account_exists;
+    gc->callback.account_data_set= init->callback.account_data_set;
     gc->modules                  = init->module;
 
     gc->internal.state_changed   = state_changed;
