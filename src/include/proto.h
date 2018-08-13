@@ -26,9 +26,12 @@ enum proto_e {
     ACCOUNT_GET,
     ACCOUNT_LOGIN,
     ACCOUNT_LOGIN_REPLY,
+    ACCOUNT_DATA_SET,
+    ACCOUNT_DATA_SET_REPLY,
     ACCOUNT_EXISTS,
     ACCOUNT_EXISTS_REPLY,
     VERSION_MISMATCH,
+    CLIENT_STOP_SET,
 };
 
 struct proto_s {
@@ -107,18 +110,33 @@ struct proto_s {
         } account_login;
         struct {
             sn     error;
+            sn     data;
         } account_login_reply;
+        struct {
+            sn     email;
+            sn     password;
+            sn     data;
+        } account_data_set;
+        struct {
+            sn     error;
+        } account_data_set_reply;
         struct {
             sn     email;
             sn     password;
         } account_exists;
         struct {
             sn     error;
+            sn     data;
         } account_exists_reply;
         struct {
             sn     master;
             sn     slave;
         } version_mismatch;
+        struct {
+            sn     address;
+            sn     cloud;
+            sn     device;
+        } client_stop_set;
     } u;
 };
 int gc_serialize(struct hm_pool_s *pool, sn *dst, struct proto_s *src);

@@ -28,7 +28,7 @@
 #define HT_REM(ht, key, nkey, pool) ht_rem(ht, key, nkey, pool)
 
 #define ht_item_clear(pool, dst)\
-    if(dst && dst->n > 0) {\
+    if (dst && dst->n > 0) {\
         hm_pfree(pool, dst->s);\
         dst->s = NULL;\
         dst->n = 0;\

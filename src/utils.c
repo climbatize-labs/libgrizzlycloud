@@ -62,7 +62,7 @@ void gc_swap_memory(char *dst, int ndst)
 {
     int i, j;
 
-    for(i = 0, j = ndst - 1; (i < (ndst / 2) && j > 0); i++, j--) {
+    for (i = 0, j = ndst - 1; (i < (ndst / 2) && j > 0); i++, j--) {
         dst[j] ^= dst[i];
         dst[i] ^= dst[j];
         dst[j] ^= dst[i];
@@ -84,12 +84,12 @@ void gc_gen_ev_send(struct gc_gen_client_s *client, char *buf, const int len)
 int gc_packet_send(struct gc_s *gc, struct proto_s *pr)
 {
     sn dst;
-    if(gc_serialize(gc->pool, &dst, pr) != GC_OK) {
+    if (gc_serialize(gc->pool, &dst, pr) != GC_OK) {
         hm_log(LOG_DEBUG, &gc->log, "Packet serialization failed");
         return GC_ERROR;
     }
 
-    if(net_send(gc, dst.s, dst.n) != GC_OK) {
+    if (net_send(gc, dst.s, dst.n) != GC_OK) {
         hm_log(LOG_DEBUG, &gc->log, "Packet of size %d couldn't be sent", dst.n);
         return GC_ERROR;
     }
@@ -106,13 +106,13 @@ int gc_parse_delimiter(struct hm_pool_s *pool, sn input, char ***argv,
 
 #define ASET\
     *argv = hm_prealloc(pool, *argv, (size_t)((++(*argc)) * sizeof(void *)));\
-    if(!argv) return GC_ERROR;\
+    if (!argv) return GC_ERROR;\
     (*argv)[*argc - 1] = start;
 
-    for(start = tmp = input.s, *argc = 0, *argv = NULL;
+    for (start = tmp = input.s, *argc = 0, *argv = NULL;
         tmp < (input.s + input.n);
         tmp++) {
-        if(*tmp == delimiter) {
+        if (*tmp == delimiter) {
             ASET
             start = tmp + 1;
             *tmp = '\0'; // replace / with zero to terminate str
@@ -132,7 +132,7 @@ int gc_backend_parse(struct hm_pool_s *pool, struct gc_config_s *cfg, const char
     assert(cfg);
 
     n = gc_fread(pool, &content, path);
-    if(n <= 1) {
+    if (n <= 1) {
         return GC_ERROR;
     }
 
@@ -143,17 +143,17 @@ int gc_backend_parse(struct hm_pool_s *pool, struct gc_config_s *cfg, const char
     struct json_object *jobj = json_tokener_parse_ex(tok, content, n);
     json_tokener_free(tok);
 
-    if(jobj == NULL) {
+    if (jobj == NULL) {
         return GC_ERROR;
     }
 
     struct json_object *backends;
     json_object_object_get_ex(jobj, "backends", &backends);
-    if(json_object_get_type(backends) == json_type_array) {
+    if (json_object_get_type(backends) == json_type_array) {
         array_list *backends_array = json_object_get_array(backends);
 
         int i;
-        for(i = 0; i < array_list_length(backends_array); i++) {
+        for (i = 0; i < array_list_length(backends_array); i++) {
             struct json_object *backend = array_list_get_idx(backends_array, i);
             struct json_object *b_ip, *b_host;
 
@@ -191,7 +191,7 @@ int gc_config_parse(struct hm_pool_s *pool, struct gc_config_s *cfg, const char 
     assert(cfg);
 
     n = gc_fread(pool, &content, path);
-    if(n <= 1) {
+    if (n <= 1) {
         return GC_ERROR;
     }
 
@@ -202,7 +202,7 @@ int gc_config_parse(struct hm_pool_s *pool, struct gc_config_s *cfg, const char 
     struct json_object *jobj = json_tokener_parse_ex(tok, content, n);
     json_tokener_free(tok);
 
-    if(jobj == NULL) {
+    if (jobj == NULL) {
         return GC_ERROR;
     }
 
@@ -211,7 +211,7 @@ int gc_config_parse(struct hm_pool_s *pool, struct gc_config_s *cfg, const char 
     json_object_object_get_ex(jobj, #m_v, &m_v);\
     enum json_type type##m_v;\
     type##m_v = json_object_get_type(m_v);\
-    if(type##m_v != m_type) {\
+    if (type##m_v != m_type) {\
         return GC_ERROR;\
     }
 
@@ -226,7 +226,7 @@ int gc_config_parse(struct hm_pool_s *pool, struct gc_config_s *cfg, const char 
 
     struct json_object *device;
     json_object_object_get_ex(jobj, "device", &device);
-    if(json_object_get_type(device) == json_type_string) {
+    if (json_object_get_type(device) == json_type_string) {
         sn_setr(cfg->device,
             (char *)json_object_get_string(device),
             json_object_get_string_len(device));
@@ -234,7 +234,7 @@ int gc_config_parse(struct hm_pool_s *pool, struct gc_config_s *cfg, const char 
 
     struct json_object *action;
     json_object_object_get_ex(jobj, "action", &action);
-    if(json_object_get_type(action) == json_type_string) {
+    if (json_object_get_type(action) == json_type_string) {
         sn_setr(cfg->action,
             (char *)json_object_get_string(action),
             json_object_get_string_len(action));
@@ -242,10 +242,10 @@ int gc_config_parse(struct hm_pool_s *pool, struct gc_config_s *cfg, const char 
 
     struct json_object *allow;
     json_object_object_get_ex(jobj, "allow", &allow);
-    if(json_object_get_type(allow) == json_type_array) {
+    if (json_object_get_type(allow) == json_type_array) {
         array_list *allow_array = json_object_get_array(allow);
         int i;
-        for(i = 0; i < array_list_length(allow_array); i++) {
+        for (i = 0; i < array_list_length(allow_array); i++) {
             struct json_object *port = array_list_get_idx(allow_array, i);
             cfg->allowed[i] = json_object_get_int(port);
             cfg->nallowed++;
@@ -254,11 +254,11 @@ int gc_config_parse(struct hm_pool_s *pool, struct gc_config_s *cfg, const char 
 
     struct json_object *tunnels;
     json_object_object_get_ex(jobj, "tunnels", &tunnels);
-    if(json_object_get_type(tunnels) == json_type_array) {
+    if (json_object_get_type(tunnels) == json_type_array) {
         array_list *tunnels_array = json_object_get_array(tunnels);
 
         int i;
-        for(i = 0; i < array_list_length(tunnels_array); i++) {
+        for (i = 0; i < array_list_length(tunnels_array); i++) {
             struct json_object *tunnel = array_list_get_idx(tunnels_array, i);
             struct json_object *t_cloud, *t_device, *t_port, *t_port_local;
 
@@ -301,13 +301,13 @@ void gc_config_dump(struct gc_config_s *cfg)
 
     hm_log(LOG_DEBUG, cfg->log, "Allowed ports total: [%d]", cfg->nallowed);
 
-    for(i = 0; i < cfg->nallowed; i++) {
+    for (i = 0; i < cfg->nallowed; i++) {
         hm_log(LOG_DEBUG, cfg->log, "Allowed port: [%d]", cfg->allowed[i]);
     }
 
     hm_log(LOG_DEBUG, cfg->log, "Allowed tunnels total: [%d]", cfg->ntunnels);
 
-    for(i = 0; i < cfg->ntunnels; i++) {
+    for (i = 0; i < cfg->ntunnels; i++) {
         hm_log(LOG_DEBUG, cfg->log, "Tunnel %d: Cloud: [%.*s] Device: [%.*s] Port: [%d] Local port: [%d]",
                                     i,
                                     sn_p(cfg->tunnels[i].cloud),
@@ -318,7 +318,7 @@ void gc_config_dump(struct gc_config_s *cfg)
 
     hm_log(LOG_DEBUG, cfg->log, "Backends total: [%d]", cfg->backends.n);
 
-    for(i = 0; i < cfg->backends.n; i++) {
+    for (i = 0; i < cfg->backends.n; i++) {
         hm_log(LOG_DEBUG, cfg->log, "Backend IP: [%.*s] Hostname: [%.*s]",
                                     sn_p(cfg->backends.item[i].ip),
                                     sn_p(cfg->backends.item[i].hostname));
@@ -337,7 +337,7 @@ int gc_fread(struct hm_pool_s *pool, char **dst, const char *fname)
     int result;
 
     pfile = fopen(fname, "rb");
-    if(pfile == NULL) {
+    if (pfile == NULL) {
         return -1;
     }
 
@@ -345,19 +345,19 @@ int gc_fread(struct hm_pool_s *pool, char **dst, const char *fname)
     lsize = ftell(pfile);
     rewind(pfile);
 
-    if(lsize > GC_MAX_FILE_SIZE) {
+    if (lsize > GC_MAX_FILE_SIZE) {
         fclose(pfile);
         return -1;
     }
 
     buffer = hm_palloc(pool, sizeof(char) * lsize);
-    if(buffer == NULL) {
+    if (buffer == NULL) {
         fclose(pfile);
         return -1;
     }
 
     result = fread(buffer, sizeof(char), lsize, pfile);
-    if(result != lsize) {
+    if (result != lsize) {
         fclose(pfile);
         hm_pfree(pool, buffer);
         return -1;
@@ -375,7 +375,7 @@ int gc_fwrite(char *fname, const char *mode, char *content, int ncontent)
     int result;
 
     pfile = fopen(fname, mode);
-    if(pfile == NULL) {
+    if (pfile == NULL) {
         return -1;
     }
 
@@ -395,10 +395,10 @@ void bin2hexstr(snb *dst, snb *src)
     int i;
     char tmp[8];
 
-    for(i = 0, dst->n = 0; i < src->n; i++) {
+    for (i = 0, dst->n = 0; i < src->n; i++) {
         snprintf(tmp, sizeof(tmp), "%x", (unsigned char)src->s[i]);
         int n = strlen(tmp);
-        if((dst->n + n) > sizeof(dst->s)) break;
+        if ((dst->n + n) > sizeof(dst->s)) break;
         memcpy(dst->s + dst->n, tmp, n);
         dst->n += n;
     }

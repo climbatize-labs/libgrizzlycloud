@@ -23,7 +23,7 @@ char *gc_ringbuffer_send_next(struct gc_ringbuffer_s *rb, int *size)
 {
     assert(rb);
 
-    if(rb->send == NULL) {
+    if (rb->send == NULL) {
         *size = 0;
         return NULL;
     }
@@ -37,12 +37,12 @@ static void gc_ringbuffer_next(struct hm_pool_s *pool, struct gc_ringbuffer_s *r
 {
     struct gc_ringbuffer_slot_s *next;
 
-    if(rb && rb->send && rb->send->sent == rb->send->len) {
+    if (rb && rb->send && rb->send->sent == rb->send->len) {
         next = rb->send->next;
         hm_pfree(pool, rb->send->buf);
         hm_pfree(pool, rb->send);
         rb->send = next;
-        if(rb->send == NULL) {
+        if (rb->send == NULL) {
             rb->tail = NULL;
         }
     }
@@ -68,7 +68,7 @@ void gc_ringbuffer_send_pop_all(struct hm_pool_s *pool, struct gc_ringbuffer_s *
 {
     struct gc_ringbuffer_slot_s *r, *rdel;
 
-    for(r = rb->send; r != NULL; ) {
+    for (r = rb->send; r != NULL; ) {
         hm_pfree(pool, r->buf);
         rdel = r;
         r = r->next;
@@ -81,7 +81,7 @@ int gc_ringbuffer_send_size(struct gc_ringbuffer_s *rb)
     int size = 0;
     struct gc_ringbuffer_slot_s *r;
 
-    for(r = rb->send; r != NULL; r = r->next) {
+    for (r = rb->send; r != NULL; r = r->next) {
         size += r->len;
     }
 
@@ -95,11 +95,11 @@ int gc_ringbuffer_send_append(struct hm_pool_s *pool, struct gc_ringbuffer_s *rb
     struct gc_ringbuffer_slot_s *slot;
 
     slot = hm_palloc(pool, sizeof(*slot));
-    if(slot == NULL) {
+    if (slot == NULL) {
         return GC_ERROR;
     }
     slot->buf = hm_palloc(pool, len);
-    if(slot->buf == NULL) {
+    if (slot->buf == NULL) {
         hm_pfree(pool, slot);
         return GC_ERROR;
     }
@@ -109,7 +109,7 @@ int gc_ringbuffer_send_append(struct hm_pool_s *pool, struct gc_ringbuffer_s *rb
     slot->sent = 0;
     slot->next = NULL;
 
-    if(rb->send == NULL && rb->tail == NULL) {
+    if (rb->send == NULL && rb->tail == NULL) {
         rb->send = rb->tail = slot;
     } else {
         assert(rb->tail);
@@ -134,7 +134,7 @@ void gc_ringbuffer_recv_pop(struct hm_pool_s *pool, struct gc_ringbuffer_s *rb)
     assert(rb);
     rb->recv.len = 0;
     rb->recv.target = 0;
-    if(rb->recv.buf) {
+    if (rb->recv.buf) {
         hm_pfree(pool, rb->recv.buf);
         rb->recv.buf = NULL;
     }

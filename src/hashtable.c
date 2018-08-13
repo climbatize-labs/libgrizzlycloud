@@ -24,7 +24,7 @@ struct ht_s **ht_init(struct hm_pool_s *pool)
     struct ht_s **ht;
 
     ht = hm_palloc(pool, sizeof(void *) * HT_MAX);
-    if(ht == NULL) {
+    if (ht == NULL) {
         return NULL;
     }
 
@@ -42,7 +42,7 @@ inline static void ht_key(int *dst, const char *key, const int nkey)
 {
     int i;
 
-    for(i = 0; i < nkey; i++) {
+    for (i = 0; i < nkey; i++) {
         *dst += key[i];
     }
 
@@ -58,17 +58,17 @@ int ht_add(struct ht_s **ht, const char *key, const int nkey, const void *value,
 
     ht_key(&index, key, nkey);
 
-    for(h = ht[index]; h != NULL; h = h->next) {
-        if(nkey == h->nk && memcmp(key, h->k, nkey) == 0) {
+    for (h = ht[index]; h != NULL; h = h->next) {
+        if (nkey == h->nk && memcmp(key, h->k, nkey) == 0) {
             /** first, free existing value */
-            if(h->flag == HT_ALLOC) {
+            if (h->flag == HT_ALLOC) {
                 hm_pfree(pool, h->s);
             }
 
             /** then copy new value */
-            if(alloc == HT_ALLOC) {
+            if (alloc == HT_ALLOC) {
                 h->s = hm_palloc(pool, nvalue);
-                if(h->s == NULL) {
+                if (h->s == NULL) {
                     return -1;
                 }
 #ifdef POOL_STDLIB
@@ -88,13 +88,13 @@ int ht_add(struct ht_s **ht, const char *key, const int nkey, const void *value,
     }
 
     h = hm_palloc(pool, sizeof(*h));
-    if(h == NULL) {
+    if (h == NULL) {
         return -1;
     }
 
     h->nk = nkey;
     h->k = hm_palloc(pool, nkey);
-    if(h->k == NULL) {
+    if (h->k == NULL) {
         return -1;
     }
 
@@ -107,10 +107,10 @@ int ht_add(struct ht_s **ht, const char *key, const int nkey, const void *value,
     memcpy(h->k, key, nkey);
 #endif
 
-    if(alloc == HT_ALLOC) {
+    if (alloc == HT_ALLOC) {
         h->flag = HT_ALLOC;
         h->s = hm_palloc(pool, nvalue);
-        if(h->s == NULL) {
+        if (h->s == NULL) {
             return -1;
         }
 
@@ -139,15 +139,15 @@ int ht_rem(struct ht_s **ht, const char *key, const int nkey, struct hm_pool_s *
 
     ht_key(&index, key, nkey);
 
-    for(h = ht[index], prev = NULL; h != NULL; prev = h, h = h->next) {
-        if(nkey == h->nk && memcmp(h->k, key, nkey) == 0) {
-            if(prev == NULL) {
+    for (h = ht[index], prev = NULL; h != NULL; prev = h, h = h->next) {
+        if (nkey == h->nk && memcmp(h->k, key, nkey) == 0) {
+            if (prev == NULL) {
                 ht[index] = h->next;
             } else {
                 prev->next = h->next;
             }
 
-            if(h->flag == HT_ALLOC) {
+            if (h->flag == HT_ALLOC) {
                 hm_pfree(pool, h->s);
             }
             hm_pfree(pool, h->k);
@@ -171,15 +171,15 @@ struct ht_s *ht_get(struct ht_s **ht, const char *key, const int nkey)
 
     ht_key(&index, key, nkey);
 
-    if(ht[index]) {
+    if (ht[index]) {
         /** fast access - only one key exists under ht index */
-        if(ht[index] && ht[index]->next == NULL) {
+        if (ht[index] && ht[index]->next == NULL) {
             return ht[index];
         }
 
         /** otherwise traverse compare against all existing keys */
-        for(h = ht[index]; h != NULL; h = h->next) {
-            if(h->nk == nkey && memcmp(h->k, key, nkey) == 0) {
+        for (h = ht[index]; h != NULL; h = h->next) {
+            if (h->nk == nkey && memcmp(h->k, key, nkey) == 0) {
                 return h;
             }
         }
@@ -198,7 +198,7 @@ void ht_dump_index(struct ht_s **ht, const char *key, const int nkey)
 
     ht_key(&index, key, nkey);
 
-    for(h = ht[index]; h != NULL; h = h->next) {
+    for (h = ht[index]; h != NULL; h = h->next) {
         printf("index [%d] with key [%.*s], value [%.*s]\n", index, h->nk, h->k, h->n, h->s);
     }
 }

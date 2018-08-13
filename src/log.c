@@ -32,11 +32,11 @@ int hm_log_impl(enum loglevel_e level, struct hm_log_s *log, const char *file,
     assert(log);
 
     /** only display messages user asked for */
-    if(level > log->level) {
+    if (level > log->level) {
         return -1;
     }
 
-    //if(log->fd == STDERR_FILENO)
+    //if (log->fd == STDERR_FILENO)
     {
         const char *colour;
         switch(level) {
@@ -70,7 +70,7 @@ int hm_log_impl(enum loglevel_e level, struct hm_log_s *log, const char *file,
             default:
                 colour = NULL;
         }
-        if(colour) {
+        if (colour) {
             len += snprintf(out, sizeof(out), colour, NULL);
         }
     }
@@ -88,7 +88,7 @@ int hm_log_impl(enum loglevel_e level, struct hm_log_s *log, const char *file,
     va_start(args, msg);
     len += vsnprintf(out+len, 3*sizeof(out)/4-len, msg, args);
     va_end(args);
-    if(len >= 3*sizeof(out)/4) {
+    if (len >= 3*sizeof(out)/4) {
         len += snprintf(out + len, sizeof(out) - len, "...");
     }
 
@@ -100,9 +100,9 @@ int hm_log_impl(enum loglevel_e level, struct hm_log_s *log, const char *file,
 
 int hm_log_open(struct hm_log_s *l, const char *filename, enum loglevel_e level)
 {
-    if(filename != NULL) {
+    if (filename != NULL) {
         l->file = fopen(filename, "a");
-        if(l->file == NULL) {
+        if (l->file == NULL) {
             return GC_ERROR;
         }
         l->fd = fileno(l->file);
@@ -118,7 +118,7 @@ int hm_log_open(struct hm_log_s *l, const char *filename, enum loglevel_e level)
 
 int hm_log_close(struct hm_log_s *l)
 {
-    if(l->file && l->file != stderr) {
+    if (l->file && l->file != stderr) {
         fclose(l->file);
         return GC_OK;
     } else {

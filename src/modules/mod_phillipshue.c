@@ -16,7 +16,7 @@ size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdata)
                                                      module_phillipshue.buffer.n);
     json_tokener_free(tok);
 
-    if(jobj == NULL) {
+    if (jobj == NULL) {
         return nmemb;
     }
 
@@ -40,7 +40,7 @@ static int curl_request(struct gc_gen_client_s *client,
     curl_global_init(CURL_GLOBAL_ALL);
 
     curl = curl_easy_init();
-    if(curl) {
+    if (curl) {
         char buffer[256];
         snprintf(buffer, sizeof(buffer), "%.*s", sn_p(url));
         curl_easy_setopt(curl, CURLOPT_URL, buffer);
@@ -56,7 +56,7 @@ static int curl_request(struct gc_gen_client_s *client,
 
         res = curl_easy_perform(curl);
 
-        if(res != CURLE_OK)
+        if (res != CURLE_OK)
             fprintf(stderr, "curl_easy_perform() failed: %s %d\n",
                     curl_easy_strerror(res), res);
 
@@ -71,7 +71,7 @@ static void client_data(struct gc_gen_client_s *client, char *buf, const int len
     struct json_object *jobj = json_tokener_parse_ex(tok, buf, len);
     json_tokener_free(tok);
 
-    if(jobj == NULL) {
+    if (jobj == NULL) {
         return;
     }
 
@@ -87,7 +87,7 @@ static void client_data(struct gc_gen_client_s *client, char *buf, const int len
     BND(snpf,  "postfield",     postfields)
     BND(sncr,  "customrequest", customrequest)
 
-    if(snurl.n > 0 && snpf.n > 0) {
+    if (snurl.n > 0 && snpf.n > 0) {
         curl_request(client, snurl, snpf, sncr);
     }
 
@@ -98,7 +98,7 @@ static int start(struct gc_s *gc, struct gc_module_s *module)
 {
     hm_log(LOG_TRACE, &gc->log, "Starting module [%s]", module->name);
     module->server = hm_palloc(gc->pool, sizeof(*(module->server)));
-    if(!module->server) return GC_ERROR;
+    if (!module->server) return GC_ERROR;
 
     memset(module->server, 0, sizeof(*(module->server)));
 
@@ -114,7 +114,7 @@ static int start(struct gc_s *gc, struct gc_module_s *module)
 
     int ret;
     ret = async_server(module->server, gc, NULL);
-    if(ret != GC_OK) {
+    if (ret != GC_OK) {
         hm_pfree(gc->pool, module->server);
         module->server = NULL;
         return ret;
@@ -131,7 +131,7 @@ static int status()
 
 static int stop(struct gc_s *gc, struct gc_module_s *module)
 {
-    if(module && module->server) {
+    if (module && module->server) {
         hm_log(LOG_TRACE, &gc->log, "Stopping module [%s]", module->name);
         async_server_shutdown(module->server);
         module->server = NULL;

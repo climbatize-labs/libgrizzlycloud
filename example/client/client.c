@@ -1,13 +1,21 @@
 #include <gc.h>
 
+static void callback_account_data_set(struct gc_s *gc, sn error)
+{
+    hm_log(LOG_DEBUG, &gc->log, "Account data set: [%.*s]", sn_p(error));
+}
+
 static void callback_account_set(struct gc_s *gc, sn error)
 {
     hm_log(LOG_DEBUG, &gc->log, "Account set: [%.*s]", sn_p(error));
 }
 
-static void callback_account_exists(struct gc_s *gc, sn error)
+static void callback_account_exists(struct gc_s *gc, sn error, sn data)
 {
     hm_log(LOG_DEBUG, &gc->log, "Account exists: [%.*s]", sn_p(error));
+    if (data.n > 0) {
+        hm_log(LOG_DEBUG, &gc->log, "Stored Data: [%.*s]", sn_p(data));
+    }
 }
 
 static void callback_traffic(struct gc_s *gc, sn error, sn type, sn cloud,
@@ -22,9 +30,12 @@ static void callback_traffic(struct gc_s *gc, sn error, sn type, sn cloud,
                                 sn_p(type));
 }
 
-static void callback_login(struct gc_s *gc, sn error)
+static void callback_login(struct gc_s *gc, sn error, sn data)
 {
     hm_log(LOG_DEBUG, &gc->log, "Login error: [%.*s]", sn_p(error));
+    if (data.n > 0) {
+        hm_log(LOG_DEBUG, &gc->log, "Stored Data: [%.*s]", sn_p(data));
+    }
 }
 
 static void client_account_create(struct gc_s *gc)
@@ -38,7 +49,23 @@ static void client_account_create(struct gc_s *gc)
 
     int ret;
     ret = gc_packet_send(gc, &as);
-    if(ret != GC_OK) CALLBACK_ERROR(&gc->log, "client_account_set");
+    if (ret != GC_OK) CALLBACK_ERROR(&gc->log, "client_account_set");
+}
+
+static void client_account_data_set(struct gc_s *gc)
+{
+    struct proto_s as = { .type = ACCOUNT_DATA_SET };
+    sn_initz(data, "{ \"x\" : 1 }");
+    sn_set(as.u.account_data_set.data, data);
+    sn_set(as.u.account_data_set.email,    gc->config.username);
+    sn_set(as.u.account_data_set.password, gc->config.password);
+
+    hm_log(LOG_DEBUG, &gc->log, "Sending account data [%.*s]",
+                                sn_p(data));
+
+    int ret;
+    ret = gc_packet_send(gc, &as);
+    if (ret != GC_OK) CALLBACK_ERROR(&gc->log, "account_data_set");
 }
 
 static void client_account_exists(struct gc_s *gc)
@@ -52,7 +79,7 @@ static void client_account_exists(struct gc_s *gc)
 
     int ret;
     ret = gc_packet_send(gc, &as);
-    if(ret != GC_OK) CALLBACK_ERROR(&gc->log, "client_account_exists");
+    if (ret != GC_OK) CALLBACK_ERROR(&gc->log, "client_account_exists");
 }
 
 static void client_login(struct gc_s *gc)
@@ -67,7 +94,7 @@ static void client_login(struct gc_s *gc)
 
     int ret;
     ret = gc_packet_send(gc, &as);
-    if(ret != GC_OK) CALLBACK_ERROR(&gc->log, "client_login");
+    if (ret != GC_OK) CALLBACK_ERROR(&gc->log, "client_login");
 }
 
 static void callback_state_changed(struct gc_s *gc, enum gc_state_e state)
@@ -77,10 +104,13 @@ static void callback_state_changed(struct gc_s *gc, enum gc_state_e state)
             hm_log(LOG_TRACE, &gc->log, "Connected to upstream");
             sn_initz(account_create, "account_create");
             sn_initz(account_exists, "account_exists");
-            if(sn_cmps(gc->config.action, account_create)) {
+            sn_initz(account_data_set, "account_data_set");
+            if (sn_cmps(gc->config.action, account_create)) {
                 client_account_create(gc);
-            } else if(sn_cmps(gc->config.action, account_exists)) {
+            } else if (sn_cmps(gc->config.action, account_exists)) {
                 client_account_exists(gc);
+            } else if (sn_cmps(gc->config.action, account_data_set)) {
+                client_account_data_set(gc);
             } else {
                 client_login(gc);
             }
@@ -97,12 +127,12 @@ static void callback_state_changed(struct gc_s *gc, enum gc_state_e state)
 static void do_daemon()
 {
     pid_t pid = fork();
-    if(pid < 0) {
+    if (pid < 0) {
         printf("Unable to daemonize: fork failed: %s\n", strerror(errno));
         exit(1);
     }
 
-    if(pid != 0) {
+    if (pid != 0) {
         printf("Daemonized as pid %d.\n", pid);
         exit(0);
     }
@@ -114,25 +144,25 @@ static void do_daemon()
 #define NULL_DEV	"/dev/null"
 
     stdin = fopen(NULL_DEV, "r");
-    if(stdin == NULL) {
+    if (stdin == NULL) {
         printf("Unable to reopen stdin to %s: %s\n", NULL_DEV, strerror(errno));
         exit(1);
     }
 
     stdout = fopen(NULL_DEV, "w");
-    if(stdout == NULL) {
+    if (stdout == NULL) {
         printf("Unable to reopen stdout to %s: %s\n", NULL_DEV, strerror(errno));
         exit(1);
     }
 
     stderr = fopen(NULL_DEV, "w");
-    if(stderr == NULL) {
+    if (stderr == NULL) {
         printf("Unable to reopen stderr to %s: %s\n", NULL_DEV, strerror(errno));
         exit(1);
     }
 
     pid_t s = setsid();
-    if(s < 0) {
+    if (s < 0) {
         printf("Unable to create new session, setsid(2) failed: %s :: %d\n", strerror(errno), s);
         exit(1);
     }
@@ -145,7 +175,7 @@ int main(int argc, char **argv)
     struct gc_init_s gci;
     struct gc_s *gc;
 
-    if(argc == 1) {
+    if (argc == 1) {
         printf("\n");
         printf("  GrizzlyCloud - Simplified VPN alternative for IoT\n");
         printf("\n");
@@ -174,41 +204,41 @@ int main(int argc, char **argv)
     int clientterm = 0;
 
     int i;
-    for(i = 0; i < argc; i++) {
-        if(strcmp(argv[i], "--config") == 0 && (i + 1) < argc)
+    for (i = 0; i < argc; i++) {
+        if (strcmp(argv[i], "--config") == 0 && (i + 1) < argc)
             config_file = argv[i + 1];
-        else if(strcmp(argv[i], "--log") == 0 && (i + 1) < argc)
+        else if (strcmp(argv[i], "--log") == 0 && (i + 1) < argc)
             log_file = argv[i + 1];
-        else if(strcmp(argv[i], "--nolog") == 0)
+        else if (strcmp(argv[i], "--nolog") == 0)
             nolog = 1;
-        else if(strcmp(argv[i], "--daemonize") == 0)
+        else if (strcmp(argv[i], "--daemonize") == 0)
             daemonize = 1;
-        else if(strcmp(argv[i], "--loglevel") == 0 && (i + 1) < argc)
+        else if (strcmp(argv[i], "--loglevel") == 0 && (i + 1) < argc)
             log_level = argv[i + 1];
-        else if(strcmp(argv[i], "--backends") == 0 && (i + 1) < argc)
+        else if (strcmp(argv[i], "--backends") == 0 && (i + 1) < argc)
             backends = argv[i + 1];
-        else if(strcmp(argv[i], "--module") == 0 && (i + 1) < argc)
+        else if (strcmp(argv[i], "--module") == 0 && (i + 1) < argc)
             module = argv[i + 1];
-        else if(strcmp(argv[i], "--clientterm") == 0)
+        else if (strcmp(argv[i], "--clientterm") == 0)
             clientterm = 1;
     }
 
-    if(config_file == NULL) {
+    if (config_file == NULL) {
         printf("Configuration file required.\n");
         exit(1);
     }
 
-    if(log_file == NULL && nolog == 0) {
+    if (log_file == NULL && nolog == 0) {
         printf("Either --log <file> or --nolog must be set.\n");
         exit(1);
     }
 
-    if(daemonize == 1 && log_file == NULL) {
+    if (daemonize == 1 && log_file == NULL) {
         printf("When daemonized, --log <file> must be specified.\n");
         exit(1);
     }
 
-    if(daemonize == 1) do_daemon();
+    if (daemonize == 1) do_daemon();
 
     memset(&gci, 0, sizeof(gci));
 
@@ -221,23 +251,24 @@ int main(int argc, char **argv)
     gci.callback.traffic       = callback_traffic;
     gci.callback.account_set   = callback_account_set;
     gci.callback.account_exists= callback_account_exists;
+    gci.callback.account_data_set   = callback_account_data_set;
 
-    if(strcmp(log_level,      "trace")   == 0) gci.loglevel = LOG_TRACE;
-    else if(strcmp(log_level, "info")    == 0) gci.loglevel = LOG_INFO;
-    else if(strcmp(log_level, "notice")  == 0) gci.loglevel = LOG_NOTICE;
-    else if(strcmp(log_level, "warning") == 0) gci.loglevel = LOG_WARNING;
-    else if(strcmp(log_level, "error")   == 0) gci.loglevel = LOG_ERR;
-    else if(strcmp(log_level, "crit")    == 0) gci.loglevel = LOG_CRIT;
-    else if(strcmp(log_level, "alert")   == 0) gci.loglevel = LOG_ALERT;
-    else if(strcmp(log_level, "emerg")   == 0) gci.loglevel = LOG_EMERG;
+    if (strcmp(log_level,      "trace")   == 0) gci.loglevel = LOG_TRACE;
+    else if (strcmp(log_level, "info")    == 0) gci.loglevel = LOG_INFO;
+    else if (strcmp(log_level, "notice")  == 0) gci.loglevel = LOG_NOTICE;
+    else if (strcmp(log_level, "warning") == 0) gci.loglevel = LOG_WARNING;
+    else if (strcmp(log_level, "error")   == 0) gci.loglevel = LOG_ERR;
+    else if (strcmp(log_level, "crit")    == 0) gci.loglevel = LOG_CRIT;
+    else if (strcmp(log_level, "alert")   == 0) gci.loglevel = LOG_ALERT;
+    else if (strcmp(log_level, "emerg")   == 0) gci.loglevel = LOG_EMERG;
     else gci.loglevel = LOG_DEBUG;
 
     gci.module = MOD_NONE;
-    if(module && strcmp(module, "all") == 0) gci.module |= MOD_PHILLIPSHUE|MOD_WEBCAM;
+    if (module && strcmp(module, "all") == 0) gci.module |= MOD_PHILLIPSHUE|MOD_WEBCAM;
     gci.clientterm = clientterm;
 
     gc = gc_init(&gci);
-    if(gc == NULL) {
+    if (gc == NULL) {
         return 1;
     }
 
